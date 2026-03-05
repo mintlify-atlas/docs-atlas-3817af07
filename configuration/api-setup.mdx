@@ -1,0 +1,198 @@
+---
+title: 'API Setup'
+description: 'Configure OpenRouter API for AI-powered story generation'
+icon: 'key'
+---
+
+## Overview
+
+Historia Diaria uses OpenRouter API to generate daily stories with AI. This guide walks you through setting up your API key and configuring the model.
+
+<Note>
+OpenRouter provides access to multiple AI models with a single API key. You only need one account to use any available model.
+</Note>
+
+## Step 1: Create OpenRouter Account
+
+<Steps>
+  <Step title="Visit OpenRouter">
+    Go to [openrouter.ai](https://openrouter.ai) and create a free account
+  </Step>
+  
+  <Step title="Add Credits">
+    Navigate to your account settings and add credits to your account. Most models cost only a few cents per story generation.
+  </Step>
+  
+  <Step title="Generate API Key">
+    In your OpenRouter dashboard:
+    - Click on "API Keys"
+    - Click "Create New Key"
+    - Give it a descriptive name (e.g., "Historia Diaria")
+    - Copy the generated key immediately (you won't see it again)
+  </Step>
+</Steps>
+
+## Step 2: Configure GitHub Secrets
+
+Your API key must be stored as a GitHub secret to keep it secure.
+
+<Steps>
+  <Step title="Navigate to Repository Settings">
+    Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions**
+  </Step>
+  
+  <Step title="Create New Secret">
+    - Click **New repository secret**
+    - Name: `OPENROUTER_API_KEY`
+    - Value: Paste your OpenRouter API key
+    - Click **Add secret**
+  </Step>
+</Steps>
+
+<Warning>
+Never commit your API key directly in the code. Always use GitHub Secrets. The workflow accesses it securely through environment variables.
+</Warning>
+
+## Step 3: How the API Key is Used
+
+The workflow passes the secret to your Python script as an environment variable:
+
+```yaml .github/workflows/actualizar.yml
+- name: 4. Ejecutar tu script
+  env:
+    OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+  run: python generar_historia.py
+```
+
+Your script retrieves it safely:
+
+```python generar_historia.py
+import os
+
+# Retrieve API key from environment variable
+api_key = os.environ.get("OPENROUTER_API_KEY")
+```
+
+## Model Selection
+
+Historia Diaria uses the OpenRouter API to generate stories. You can choose from various models based on cost and quality.
+
+### Current Model
+
+The default configuration uses:
+
+```python generar_historia.py
+response = requests.post(
+    url="https://openrouter.ai/api/v1/chat/completions",
+    headers={
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    },
+    data=json.dumps({
+        "model": "stepfun/step-3.5-flash:free",
+        "messages": [{"role": "user", "content": prompt}]
+    })
+)
+```
+
+### Available Models
+
+<CardGroup cols={2}>
+  <Card title="Free Models" icon="gift">
+    - `stepfun/step-3.5-flash:free` (Current)
+    - `google/gemini-flash-1.5` (Free tier)
+    - Limited rate limits
+  </Card>
+  
+  <Card title="Premium Models" icon="star">
+    - `openai/gpt-4-turbo`
+    - `anthropic/claude-3-opus`
+    - `google/gemini-pro-1.5`
+    - Better quality, higher cost
+  </Card>
+</CardGroup>
+
+### Changing the Model
+
+To use a different model, edit line 23 in `generar_historia.py`:
+
+```python generar_historia.py
+# Change this line:
+"model": "stepfun/step-3.5-flash:free",
+
+# To your preferred model:
+"model": "openai/gpt-4-turbo",
+```
+
+<Tip>
+Check [OpenRouter's model list](https://openrouter.ai/models) for current pricing and availability.
+</Tip>
+
+## Cost Considerations
+
+### Free Tier
+
+The default `stepfun/step-3.5-flash:free` model is completely free but has:
+- Rate limits
+- Lower priority during peak times
+- May have quality variations
+
+### Paid Models
+
+Typical costs for a 2-3 paragraph story generation:
+
+<AccordionGroup>
+  <Accordion title="Budget Models ($0.001 - $0.01 per story)">
+    - `google/gemini-flash-1.5`: ~$0.002 per story
+    - `openai/gpt-3.5-turbo`: ~$0.005 per story
+    - Ideal for daily automation
+  </Accordion>
+  
+  <Accordion title="Premium Models ($0.05 - $0.20 per story)">
+    - `openai/gpt-4-turbo`: ~$0.08 per story
+    - `anthropic/claude-3-opus`: ~$0.15 per story
+    - Best quality for special occasions
+  </Accordion>
+</AccordionGroup>
+
+### Monthly Cost Estimation
+
+For daily story generation (30 stories/month):
+
+| Model | Cost per Story | Monthly Cost |
+|-------|----------------|-------------|
+| Free models | $0.00 | $0.00 |
+| Gemini Flash | $0.002 | $0.06 |
+| GPT-3.5 Turbo | $0.005 | $0.15 |
+| GPT-4 Turbo | $0.08 | $2.40 |
+| Claude Opus | $0.15 | $4.50 |
+
+## Error Handling
+
+The script includes built-in error handling if the API fails:
+
+```python generar_historia.py
+try:
+    response = requests.post(
+        url="https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        data=json.dumps({"model": "stepfun/step-3.5-flash:free", "messages": [{"role": "user", "content": prompt}]})
+    )
+    respuesta_ia = response.json()['choices'][0]['message']['content']
+except Exception as e:
+    respuesta_ia = "<TITULO>Error</TITULO><HISTORIA>Fallo al conectar con la API.</HISTORIA><IMAGEN>error</IMAGEN>"
+```
+
+If the API fails, an error page is generated instead of stopping the workflow.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Customize Prompts" icon="wand-magic-sparkles" href="/configuration/customization">
+    Learn how to customize the AI prompt and story format
+  </Card>
+  
+  <Card title="GitHub Actions Setup" icon="robot" href="/configuration/github-actions">
+    Configure the automation workflow
+  </Card>
+</CardGroup>

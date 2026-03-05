@@ -1,0 +1,426 @@
+---
+title: Troubleshooting
+description: Solutions to common issues when running Historia Diaria
+icon: wrench
+---
+
+## Common Issues and Solutions
+
+### API Connection Failures
+
+#### Symptom
+Your generated story shows "Error" as the title or "Fallo al conectar con la API" as the content.
+
+#### Error Handling in Code
+The script includes basic error handling:
+
+```python
+try:
+    response = requests.post(
+        url="https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        data=json.dumps({"model": "stepfun/step-3.5-flash:free", "messages": [{"role": "user", "content": prompt}]})
+    )
+    respuesta_ia = response.json()['choices'][0]['message']['content']
+except Exception as e:
+    respuesta_ia = "<TITULO>Error</TITULO><HISTORIA>Fallo al conectar con la API.</HISTORIA><IMAGEN>error</IMAGEN>"
+```
+
+#### Possible Causes and Solutions
+
+<Warning>
+**Missing or Invalid API Key** - This is the most common cause of connection failures.
+</Warning>
+
+**Solution:**
+1. Verify your API key is correctly set in GitHub Secrets
+2. Go to your repository → Settings → Secrets and variables → Actions
+3. Check that `OPENROUTER_API_KEY` exists and contains a valid key
+4. Get a new API key from [OpenRouter](https://openrouter.ai/) if needed
+
+**Network Issues:**
+- Check [OpenRouter status page](https://status.openrouter.ai/) for API outages
+- GitHub Actions may have temporary network issues - wait and retry
+
+**API Rate Limits:**
+- Free tier models have usage limits
+- Check your OpenRouter dashboard for quota information
+- Consider upgrading or using a different model
+
+**Invalid Response Format:**
+```python
+# The code expects this structure:
+response.json()['choices'][0]['message']['content']
+```
+If the API returns an error object instead, this will fail.
+
+<Note>
+To debug API responses, you can temporarily add `print(response.text)` after line 24 in `generar_historia.py` to see the raw response in GitHub Actions logs.
+</Note>
+
+---
+
+### GitHub Actions Not Running
+
+#### Symptom
+The workflow doesn't execute automatically at the scheduled time.
+
+#### Scheduled Execution Details
+The workflow is configured to run daily:
+
+```yaml
+on:
+  schedule:
+    # Los servidores usan la hora universal (UTC).
+    # Las 13:00 UTC equivalen exactamente a las 8:00 AM en Lima.
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+```
+
+#### Common Causes
+
+**1. Repository Inactivity**
+<Warning>
+GitHub automatically disables scheduled workflows in repositories with no activity for 60 days.
+</Warning>
+
+**Solution:**
+- Make any commit to the repository
+- Or manually trigger the workflow using the "Actions" tab
+- GitHub will send you an email warning before disabling
+
+**2. Workflow Disabled Manually**
+
+**Solution:**
+1. Go to the "Actions" tab in your repository
+2. Click on "Actualizar Historia Diaria" workflow
+3. If you see "This workflow was disabled", click "Enable workflow"
+
+**3. Incorrect Cron Syntax**
+
+The current cron schedule:
+- `0 13 * * *` = Every day at 13:00 UTC (8:00 AM Lima time)
+
+**4. GitHub Actions Delays**
+
+<Note>
+Scheduled workflows may be delayed by up to 10-15 minutes during high-load periods on GitHub's infrastructure. This is normal behavior.
+</Note>
+
+---
+
+### Secret Configuration Errors
+
+#### Symptom
+Workflow fails with authentication errors or the API key appears empty.
+
+#### How Secrets Work
+The workflow accesses the secret like this:
+
+```yaml
+- name: 4. Ejecutar tu script
+  env:
+    OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+  run: python generar_historia.py
+```
+
+And the Python script reads it:
+
+```python
+api_key = os.environ.get("OPENROUTER_API_KEY")
+```
+
+#### Common Mistakes
+
+**Secret Name Mismatch:**
+- Secret must be named exactly `OPENROUTER_API_KEY`
+- Secret names are case-sensitive
+
+**Wrong Scope:**
+- Secrets must be set in Repository Settings, not Environment secrets
+- Path: Settings → Secrets and variables → Actions → Repository secrets
+
+**Leading/Trailing Spaces:**
+- Copy the API key carefully without extra spaces
+- GitHub Secrets trim spaces, but verify the key is correct
+
+**Validation:**
+Check the workflow logs:
+```bash
+# The log should show:
+Run python generar_historia.py
+```
+
+If you see errors about missing authorization, the secret isn't being passed correctly.
+
+---
+
+### File Permission Issues
+
+#### Symptom
+Workflow fails with "Permission denied" or "failed to push some refs".
+
+#### Required Permissions
+The workflow needs write access:
+
+```yaml
+permissions:
+  contents: write  # Le damos permiso a la máquina para modificar tu repositorio
+```
+
+#### Solutions
+
+**1. Enable Workflow Permissions**
+
+1. Go to Settings → Actions → General
+2. Scroll to "Workflow permissions"
+3. Select "Read and write permissions"
+4. Check "Allow GitHub Actions to create and approve pull requests" (optional)
+5. Click "Save"
+
+**2. Branch Protection Rules**
+
+If you have branch protection enabled on `main`:
+- Workflows may not be able to push directly
+- Either disable branch protection or allow Actions to bypass
+
+<Warning>
+Do not modify the git configuration in the workflow. The current setup is correct:
+```yaml
+git config --local user.email "github-actions[bot]@users.noreply.github.com"
+git config --local user.name "github-actions[bot]"
+```
+</Warning>
+
+---
+
+### Invalid API Responses
+
+#### Symptom
+Stories are generated but titles or content are missing or malformed.
+
+#### Response Parsing Logic
+The script uses regex to extract content:
+
+```python
+titulo_match = re.search(r'<TITULO>(.*?)</TITULO>', respuesta_ia, re.DOTALL)
+historia_match = re.search(r'<HISTORIA>(.*?)</HISTORIA>', respuesta_ia, re.DOTALL)
+
+nuevo_titulo = titulo_match.group(1).strip() if titulo_match else "Historia sin título"
+nueva_historia = historia_match.group(1).strip() if historia_match else "Error al generar la historia."
+```
+
+#### Common Issues
+
+**AI Doesn't Follow Format:**
+The AI model sometimes ignores the prompt format.
+
+**Fallback Values:**
+- If `<TITULO>` tags not found: "Historia sin título"
+- If `<HISTORIA>` tags not found: "Error al generar la historia."
+
+**Solutions:**
+
+1. **Try a different model** - Edit line 23 in `generar_historia.py`:
+   ```python
+   # Current model:
+   "model": "stepfun/step-3.5-flash:free"
+   
+   # Alternative free models:
+   "model": "google/gemini-flash-1.5"
+   "model": "meta-llama/llama-3-8b-instruct:free"
+   ```
+
+2. **Strengthen the prompt** - The prompt at lines 11-17 can be made more explicit
+
+3. **Add validation logging** - Temporarily add debugging:
+   ```python
+   print(f"Raw response: {respuesta_ia}")
+   print(f"Title match: {titulo_match}")
+   print(f"Story match: {historia_match}")
+   ```
+
+---
+
+### History JSON Corruption
+
+#### Symptom
+The sidebar menu doesn't appear or shows broken links.
+
+#### How History Works
+The script maintains `historial.json`:
+
+```python
+if os.path.exists('historial.json'):
+    with open('historial.json', 'r', encoding='utf-8') as f:
+        historial = json.load(f)
+else:
+    historial = {}
+```
+
+#### Expected JSON Format
+```json
+{
+  "Marzo 2026": [
+    {
+      "titulo": "La Última Frontera",
+      "archivo": "historia-2026-03-05.html"
+    }
+  ]
+}
+```
+
+#### Fixing Corruption
+
+<Warning>
+If `historial.json` contains invalid JSON syntax, the script will crash.
+</Warning>
+
+**Solution 1: Manual Fix**
+1. Open `historial.json` in your repository
+2. Click "Edit"
+3. Fix JSON syntax errors (use a JSON validator)
+4. Commit changes
+
+**Solution 2: Reset History**
+1. Delete `historial.json` from your repository
+2. The script will create a fresh one on next run
+3. Previous stories will still exist as HTML files
+4. You'll need to manually rebuild the history or let it accumulate
+
+**Prevention:**
+- Don't manually edit `historial.json` unless you're comfortable with JSON
+- Use a JSON validator before committing changes
+
+---
+
+### Template Rendering Errors
+
+#### Symptom
+Generated HTML pages show placeholders like `{{TITULO}}` instead of actual content.
+
+#### Template Variables
+The script replaces these placeholders in `plantilla.html`:
+
+```python
+contenido_html = contenido_html.replace('{{TITULO}}', nuevo_titulo)
+contenido_html = contenido_html.replace('{{HISTORIA}}', nueva_historia)
+contenido_html = contenido_html.replace('{{IMAGEN_URL}}', url_imagen)
+contenido_html = contenido_html.replace('{{MENU}}', menu_html)
+```
+
+#### Common Causes
+
+**Missing `plantilla.html`:**
+- The template file must exist in the repository root
+- Check line 85: `with open('plantilla.html', 'r', encoding='utf-8') as archivo:`
+
+**Solution:**
+Ensure `plantilla.html` exists and contains:
+- `{{TITULO}}` - Story title
+- `{{HISTORIA}}` - Story content
+- `{{IMAGEN_URL}}` - Image URL
+- `{{MENU}}` - Sidebar menu HTML
+
+**Variable Name Typos:**
+Make sure placeholders match exactly (case-sensitive).
+
+**Encoding Issues:**
+The script uses UTF-8 encoding. If your template has different encoding:
+```python
+with open('plantilla.html', 'r', encoding='utf-8') as archivo:
+```
+
+---
+
+### Dependency Installation Failures
+
+#### Symptom
+Workflow fails at the "Instalar dependencias" step.
+
+#### Installation Steps
+```yaml
+- name: 3. Instalar dependencias (NUEVO PASO)
+  run: |
+    python -m pip install --upgrade pip
+    pip install requests
+```
+
+#### Solutions
+
+**Network Timeouts:**
+- Retry the workflow (usually temporary)
+- GitHub Actions has reliable PyPI connectivity
+
+**Python Version Issues:**
+The workflow uses Python 3.10:
+```yaml
+- name: 2. Preparar e instalar Python
+  uses: actions/setup-python@v5
+  with:
+    python-version: '3.10'
+```
+
+If needed, you can change to `'3.11'` or `'3.12'`.
+
+**Additional Dependencies:**
+The script only requires:
+- `requests` (for API calls)
+- `json`, `re`, `datetime`, `uuid`, `os` (all built-in)
+
+---
+
+## Debugging Tips
+
+### Viewing Workflow Logs
+
+1. Go to your repository on GitHub
+2. Click the "Actions" tab
+3. Click on a workflow run (green check, red X, or yellow dot)
+4. Click on the job name "generar-pagina"
+5. Expand each step to see detailed output
+
+### Testing Locally
+
+You can test the script on your computer:
+
+```bash
+# Set environment variable
+export OPENROUTER_API_KEY="your-api-key-here"
+
+# Install dependencies
+pip install requests
+
+# Run the script
+python generar_historia.py
+```
+
+<Note>
+Local testing requires `plantilla.html` in the same directory.
+</Note>
+
+### Manual Workflow Trigger
+
+Test without waiting for the schedule:
+
+1. Go to Actions tab
+2. Click "Actualizar Historia Diaria"
+3. Click "Run workflow" button
+4. Select branch (usually `main`)
+5. Click "Run workflow"
+
+---
+
+## Getting Help
+
+If you're still experiencing issues:
+
+1. **Check workflow logs** for specific error messages
+2. **Verify all secrets** are correctly configured
+3. **Test the API key** separately using curl or Postman
+4. **Review recent commits** that might have introduced changes
+5. **Check GitHub Status** at [githubstatus.com](https://www.githubstatus.com/)
+
+<Note>
+Most issues are related to API keys or GitHub Actions permissions. Double-check these first!
+</Note>

@@ -1,80 +1,504 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get your Historia Diaria instance up and running in under 10 minutes
 ---
 
-## Get started in three steps
+## Get Started in Minutes
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This guide will walk you through setting up your own Historia Diaria instance - an automated daily story generator powered by AI and GitHub Actions.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+**Time to complete**: ~10 minutes  
+**Prerequisites**: A GitHub account (free) and an OpenRouter API key (free tier available)
 </Note>
+
+## Setup Overview
+
+<Steps>
+
+<Step title="Fork the Repository">
+
+1. Go to the [Historia Diaria repository](https://github.com/YOUR_USERNAME/historia-diaria)
+2. Click the **Fork** button in the top-right corner
+3. Wait for GitHub to create your own copy of the repository
+
+<Info>
+Forking creates an independent copy of the project under your account. You'll have full control to customize and run it.
+</Info>
+
+</Step>
+
+<Step title="Get Your OpenRouter API Key">
+
+Historia Diaria uses OpenRouter to access AI models. Here's how to get your free API key:
+
+1. Visit [OpenRouter.ai](https://openrouter.ai/)
+2. Sign up for a free account
+3. Navigate to your **API Keys** section
+4. Click **Create Key** and copy your API key
+
+<Warning>
+Keep your API key secure! Never commit it directly to your code. We'll store it in GitHub Secrets in the next step.
+</Warning>
+
+The project uses the `stepfun/step-3.5-flash:free` model which is available on the free tier.
+
+</Step>
+
+<Step title="Configure GitHub Secrets">
+
+Store your API key securely in GitHub Secrets:
+
+1. In your forked repository, click **Settings** (top menu)
+2. In the left sidebar, expand **Secrets and variables** → click **Actions**
+3. Click **New repository secret**
+4. Enter the following:
+   - **Name**: `OPENROUTER_API_KEY`
+   - **Secret**: Paste your API key from step 2
+5. Click **Add secret**
+
+<CodeGroup>
+
+```yaml actualizar.yml
+# How the secret is used in the workflow
+- name: 4. Ejecutar tu script
+  env:
+    OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+  run: python generar_historia.py
+```
+
+```python generar_historia.py
+# How the script accesses the secret
+import os
+
+api_key = os.environ.get("OPENROUTER_API_KEY")
+```
+
+</CodeGroup>
+
+<Info>
+GitHub Secrets are encrypted and only exposed to workflows. They're never visible in logs or to other users.
+</Info>
+
+</Step>
+
+<Step title="Enable GitHub Actions">
+
+GitHub Actions may be disabled by default on forked repositories:
+
+1. Go to the **Actions** tab in your repository
+2. If you see a message about workflows being disabled, click **I understand my workflows, go ahead and enable them**
+3. You should now see the "Actualizar Historia Diaria" workflow
+
+<Note>
+This step is crucial - without enabling Actions, the automated workflow won't run!
+</Note>
+
+</Step>
+
+<Step title="Enable GitHub Pages">
+
+Configure GitHub Pages to publish your stories:
+
+1. Go to **Settings** → **Pages** (in the left sidebar)
+2. Under **Source**, select **Deploy from a branch**
+3. Under **Branch**, select **main** (or **master**) and **/ (root)**
+4. Click **Save**
+
+Your site will be published at: `https://YOUR_USERNAME.github.io/historia-diaria/`
+
+<Info>
+It may take a few minutes for your site to become available after the first deployment.
+</Info>
+
+</Step>
+
+<Step title="Test the Workflow">
+
+Trigger your first story generation manually:
+
+1. Go to the **Actions** tab
+2. Click on **Actualizar Historia Diaria** workflow (left sidebar)
+3. Click the **Run workflow** button (right side)
+4. Click the green **Run workflow** button in the dropdown
+5. Wait ~30-60 seconds for the workflow to complete
+
+<CodeGroup>
+
+```yaml Workflow Trigger Configuration
+name: Actualizar Historia Diaria
+
+on:
+  schedule:
+    # Runs daily at 13:00 UTC (8:00 AM Lima time)
+    - cron: '0 13 * * *'
+  workflow_dispatch: # Allows manual triggering
+```
+
+```yaml Workflow Steps
+jobs:
+  generar-pagina:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 1. Descargar tu código a la máquina virtual
+        uses: actions/checkout@v4
+
+      - name: 2. Preparar e instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 3. Instalar dependencias (NUEVO PASO)
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: 4. Ejecutar tu script
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python generar_historia.py
+
+      - name: 5. Guardar los cambios (Hacer Commit y Push)
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git diff --quiet && git diff --staged --quiet || git commit -m "Actualizar historia e historial"
+          git push
+```
+
+</CodeGroup>
+
+If the workflow succeeds, you'll see:
+- A green checkmark ✓
+- New files committed to your repository: `index.html`, `historia-YYYY-MM-DD.html`, updated `historial.json`
+
+<Warning>
+If the workflow fails, check:
+- Is your API key correctly set in Secrets?
+- Did you enable write permissions for Actions? (Settings → Actions → General → Workflow permissions → Read and write permissions)
+</Warning>
+
+</Step>
+
+<Step title="View Your Generated Story">
+
+Once the workflow completes and GitHub Pages deploys:
+
+1. Visit `https://YOUR_USERNAME.github.io/historia-diaria/`
+2. You should see your first AI-generated story!
+3. Click the **☰** menu icon to see the sidebar navigation
+4. Past stories will appear in the history organized by month
+
+<Info>
+GitHub Pages deployment can take 2-5 minutes after the workflow completes. Be patient on your first run!
+</Info>
+
+</Step>
+
+</Steps>
+
+## Customize Your Instance
+
+Now that your instance is running, here are some ways to customize it:
+
+<AccordionGroup>
+
+<Accordion title="Change the Story Prompt">
+
+Edit the prompt in `generar_historia.py` to generate different types of stories:
+
+```python generar_historia.py
+prompt = """
+Escribe una historia corta de ciencia ficción o fantasía.
+Debes devolver tu respuesta EXACTAMENTE en este formato:
+<TITULO>Aquí va el título</TITULO>
+<HISTORIA>Aquí va la historia en unos dos o tres párrafos.</HISTORIA>
+<IMAGEN>una_sola_palabra_clave_en_ingles</IMAGEN>
+"""
+```
+
+**Ideas to try**:
+- Change the genre: "mystery", "horror", "romance", "humor"
+- Add style requirements: "in the style of Edgar Allan Poe"
+- Set themes: "stories about time travel", "underwater adventures"
+- Adjust length: "one paragraph" or "five paragraphs"
+
+<Warning>
+Don't change the XML-like format tags (`<TITULO>`, `<HISTORIA>`, `<IMAGEN>`). The script uses regex to parse these specific tags.
+</Warning>
+
+</Accordion>
+
+<Accordion title="Adjust the Schedule">
+
+Modify when stories are generated by editing the cron schedule in `.github/workflows/actualizar.yml`:
+
+```yaml actualizar.yml
+on:
+  schedule:
+    - cron: '0 13 * * *'  # 13:00 UTC = 8:00 AM Lima
+```
+
+**Cron syntax**: `minute hour day month weekday`
+
+**Examples**:
+- `'0 0 * * *'` - Midnight UTC every day
+- `'0 12 * * *'` - Noon UTC every day
+- `'0 9 * * 1'` - 9:00 AM UTC every Monday
+- `'0 */6 * * *'` - Every 6 hours
+
+<Info>
+GitHub Actions uses UTC timezone. Convert your local time to UTC when setting the schedule.
+</Info>
+
+</Accordion>
+
+<Accordion title="Change the AI Model">
+
+Switch to a different AI model by editing the model parameter in `generar_historia.py`:
+
+```python generar_historia.py
+response = requests.post(
+    url="https://openrouter.ai/api/v1/chat/completions",
+    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+    data=json.dumps({
+        "model": "stepfun/step-3.5-flash:free",  # Change this line
+        "messages": [{"role": "user", "content": prompt}]
+    })
+)
+```
+
+**Free models on OpenRouter**:
+- `google/gemini-2.0-flash-exp:free` - Google's Gemini Flash
+- `meta-llama/llama-3.1-8b-instruct:free` - Llama 3.1
+- `microsoft/phi-3-mini-128k-instruct:free` - Microsoft Phi-3
+
+Check [OpenRouter Models](https://openrouter.ai/models) for the full list and pricing.
+
+</Accordion>
+
+<Accordion title="Customize the HTML Template">
+
+Edit `plantilla.html` to change the look and feel of your stories:
+
+```html plantilla.html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historia Diaria Automatizada</title>
+    <style>
+        /* Modify CSS here */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            /* Add your styles */
+        }
+    </style>
+</head>
+<body>
+    <!-- Modify HTML structure here -->
+    <div class="container">
+        <h1>{{TITULO}}</h1>
+        <img src="{{IMAGEN_URL}}" alt="Imagen del día" class="imagen-dia">
+        <div class="historia-texto">
+            <p>{{HISTORIA}}</p>
+        </div>
+    </div>
+</body>
+</html>
+```
+
+**Template variables**:
+- `{{TITULO}}` - Story title
+- `{{HISTORIA}}` - Story content
+- `{{IMAGEN_URL}}` - Random image URL
+- `{{MENU}}` - Sidebar navigation HTML
+
+<Note>
+Keep the `{{VARIABLE}}` placeholders intact - the script replaces these with actual content.
+</Note>
+
+</Accordion>
+
+<Accordion title="Modify Image Generation">
+
+The script uses Picsum Photos for random images. Edit `generar_historia.py` to customize:
+
+```python generar_historia.py
+import uuid
+
+# Current implementation - random seed for consistent daily image
+codigo_unico = uuid.uuid4().hex
+url_imagen = f"https://picsum.photos/seed/{codigo_unico}/600/350"
+```
+
+**Alternatives**:
+
+```python
+# Use a specific photo ID
+url_imagen = "https://picsum.photos/id/237/600/350"
+
+# Grayscale image
+url_imagen = f"https://picsum.photos/seed/{codigo_unico}/600/350?grayscale"
+
+# Blur effect
+url_imagen = f"https://picsum.photos/seed/{codigo_unico}/600/350?blur=2"
+
+# Different dimensions
+url_imagen = f"https://picsum.photos/seed/{codigo_unico}/800/400"
+```
+
+Or integrate with other image services like Unsplash API.
+
+</Accordion>
+
+</AccordionGroup>
+
+## Understanding the Generated Files
+
+After each run, the workflow creates/updates these files:
+
+<CodeGroup>
+
+```html index.html
+<!-- Always contains the LATEST story -->
+<!-- This is what visitors see at your GitHub Pages URL -->
+<!DOCTYPE html>
+<html lang="es">
+  <!-- Full story with navigation -->
+</html>
+```
+
+```html historia-2026-03-05.html
+<!-- Archived version of today's story -->
+<!-- Filename format: historia-YYYY-MM-DD.html -->
+<!-- Accessible via sidebar navigation -->
+<!DOCTYPE html>
+<html lang="es">
+  <!-- Full story with navigation -->
+</html>
+```
+
+```json historial.json
+{
+  "Marzo 2026": [
+    {
+      "titulo": "El Guardián del Faro de las Sombras",
+      "archivo": "historia-2026-03-04.html"
+    }
+  ]
+}
+```
+
+</CodeGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="Workflow fails with 'Permission denied' error">
+
+**Cause**: GitHub Actions doesn't have write permissions.
+
+**Solution**:
+1. Go to **Settings** → **Actions** → **General**
+2. Scroll to **Workflow permissions**
+3. Select **Read and write permissions**
+4. Click **Save**
+
+</Accordion>
+
+<Accordion title="Story shows 'Error al conectar con la API'">
+
+**Cause**: API key is missing or invalid.
+
+**Solution**:
+1. Verify your OpenRouter API key is valid
+2. Check the secret name is exactly `OPENROUTER_API_KEY`
+3. Re-add the secret in Settings → Secrets and variables → Actions
+4. Run the workflow again
+
+You can also check the workflow logs for the specific error from the API.
+
+</Accordion>
+
+<Accordion title="GitHub Pages shows 404 error">
+
+**Cause**: Pages not enabled or files not in correct location.
+
+**Solution**:
+1. Verify GitHub Pages is enabled (Settings → Pages)
+2. Confirm source is set to **main** branch and **/ (root)**
+3. Wait 2-5 minutes after the first deployment
+4. Check that `index.html` exists in your repository root
+5. Try accessing `https://YOUR_USERNAME.github.io/historia-diaria/index.html` directly
+
+</Accordion>
+
+<Accordion title="Schedule not working (no automatic runs)">
+
+**Cause**: GitHub disables scheduled workflows on inactive forks.
+
+**Solution**:
+1. Ensure you've made at least one commit to your fork
+2. GitHub may disable schedules after 60 days of repository inactivity
+3. Manual workflow runs keep the repository "active"
+4. You can trigger manually anytime using `workflow_dispatch`
+
+</Accordion>
+
+<Accordion title="Same story appears multiple times">
+
+**Cause**: Multiple workflow runs on the same day.
+
+**Solution**: This is expected behavior! The script updates the entry for today if it already exists:
+
+```python generar_historia.py
+# Smart update logic
+historia_actualizada = False
+for item in historial[llave_mes]:
+    if item['archivo'] == nombre_archivo_hoy:
+        item['titulo'] = nuevo_titulo  # Updates instead of duplicating
+        historia_actualizada = True
+        break
+
+if not historia_actualizada:
+    historial[llave_mes].insert(0, {"titulo": nuevo_titulo, "archivo": nombre_archivo_hoy})
+```
+
+The system prevents duplicate entries by checking if a file for today already exists.
+
+</Accordion>
+
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Customize Your Project" icon="wand-magic-sparkles" href="/configuration/customization">
+    Learn how to customize prompts, templates, and styling
+  </Card>
+  <Card title="Understanding the Code" icon="code" href="/reference/script-reference">
+    Deep dive into the script structure and components
+  </Card>
+  <Card title="GitHub Actions Workflow" icon="gears" href="/configuration/github-actions">
+    Optimize your GitHub Actions workflow configuration
+  </Card>
+  <Card title="API Setup Guide" icon="plug" href="/configuration/api-setup">
+    Explore OpenRouter API configuration and model options
+  </Card>
+</CardGroup>
+
+## Need Help?
+
+<Note>
+If you run into issues not covered in this guide, check the workflow logs in the Actions tab. They provide detailed error messages and execution traces.
+</Note>
+
+Congratulations! You now have a fully automated daily story generator. Your instance will create new stories every day without any manual intervention. Enjoy your creative automation! 🎉

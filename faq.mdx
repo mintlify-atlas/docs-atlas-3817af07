@@ -1,0 +1,794 @@
+---
+title: Frequently Asked Questions
+description: Common questions about Historia Diaria
+icon: question
+---
+
+## General Questions
+
+<AccordionGroup>
+  <Accordion title="How do I change the schedule?">
+    The schedule is configured in `.github/workflows/actualizar.yml` using cron syntax.
+
+    **Current Schedule:**
+    ```yaml
+    on:
+      schedule:
+        - cron: '0 13 * * *'  # 13:00 UTC = 8:00 AM Lima time
+    ```
+
+    **Common Schedule Examples:**
+    ```yaml
+    # Every day at midnight UTC
+    - cron: '0 0 * * *'
+
+    # Every day at 9:00 AM UTC (4:00 AM Lima)
+    - cron: '0 9 * * *'
+
+    # Every day at 6:00 PM UTC (1:00 PM Lima)
+    - cron: '0 18 * * *'
+
+    # Twice daily: 6:00 AM and 6:00 PM UTC
+    - cron: '0 6,18 * * *'
+
+    # Every Monday at 10:00 AM UTC
+    - cron: '0 10 * * 1'
+    ```
+
+    **Cron Format:** `minute hour day month day-of-week`
+
+    <Warning>
+    Remember that GitHub Actions uses UTC time. Convert your local time to UTC before setting the schedule.
+    </Warning>
+
+    **Steps to change:**
+    1. Edit `.github/workflows/actualizar.yml`
+    2. Modify the cron expression
+    3. Commit and push the changes
+    4. The new schedule will take effect immediately
+
+    <Note>
+    Scheduled workflows may be delayed by 10-15 minutes during high-load periods on GitHub's servers.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Can I use a different AI model?">
+    Yes! You can change the AI model used for story generation.
+
+    **Current Model:**
+    ```python
+    "model": "stepfun/step-3.5-flash:free"
+    ```
+
+    **How to Change:**
+    1. Open `generar_historia.py`
+    2. Find line 23 with the model specification
+    3. Replace with your preferred model
+    4. Commit and push
+
+    **Popular Free Models on OpenRouter:**
+    ```python
+    # Fast and capable
+    "model": "google/gemini-flash-1.5"
+
+    # Good for creative writing
+    "model": "meta-llama/llama-3-8b-instruct:free"
+
+    # Anthropic's free tier
+    "model": "anthropic/claude-3-haiku:free"
+
+    # Current default (Step AI)
+    "model": "stepfun/step-3.5-flash:free"
+    ```
+
+    **Paid Models (require credits):**
+    ```python
+    # High quality creative writing
+    "model": "anthropic/claude-3.5-sonnet"
+
+    # OpenAI's latest
+    "model": "openai/gpt-4-turbo"
+
+    # Excellent for stories
+    "model": "google/gemini-pro-1.5"
+    ```
+
+    <Note>
+    Check [OpenRouter's models page](https://openrouter.ai/models) for the complete list of available models and their pricing.
+    </Note>
+
+    **Testing Different Models:**
+    Different models may have varying:
+    - Response times
+    - Creative writing quality
+    - Ability to follow the format instructions
+    - Rate limits and costs
+
+    Experiment to find the model that works best for your needs!
+  </Accordion>
+
+  <Accordion title="How do I customize the HTML design?">
+    The design is controlled by `plantilla.html`, which contains all HTML, CSS, and JavaScript.
+
+    **Structure:**
+    ```html
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <!-- Meta tags and styles -->
+        <style>
+            /* All CSS is embedded here */
+        </style>
+    </head>
+    <body>
+        <!-- Sidebar menu -->
+        <nav id="sidebar">
+            {{MENU}}
+        </nav>
+
+        <!-- Main content -->
+        <div class="container">
+            <h1>{{TITULO}}</h1>
+            <img src="{{IMAGEN_URL}}" alt="Imagen del día">
+            <div class="historia-texto">
+                <p>{{HISTORIA}}</p>
+            </div>
+        </div>
+
+        <script>
+            /* JavaScript for sidebar toggle */
+        </script>
+    </body>
+    </html>
+    ```
+
+    **Customization Ideas:**
+
+    **1. Change Colors:**
+    ```css
+    /* Find these lines in the <style> section */
+    body {
+        background-color: #f0f2f5;  /* Page background */
+    }
+
+    .container {
+        background-color: #ffffff;  /* Card background */
+    }
+
+    h1 {
+        color: #2d3748;  /* Title color */
+    }
+    ```
+
+    **2. Modify Typography:**
+    ```css
+    body {
+        font-family: 'Georgia', serif;  /* Change to serif font */
+    }
+
+    h1 {
+        font-size: 2.5rem;  /* Make title larger */
+    }
+
+    .historia-texto {
+        font-size: 1.2rem;  /* Adjust story text size */
+        line-height: 1.8;  /* More spacing */
+    }
+    ```
+
+    **3. Adjust Layout:**
+    ```css
+    .container {
+        max-width: 800px;  /* Wider content area */
+        padding: 50px;     /* More padding */
+    }
+
+    .imagen-dia {
+        max-width: 80%;    /* Smaller image */
+    }
+    ```
+
+    **4. Add Dark Mode:**
+    ```css
+    @media (prefers-color-scheme: dark) {
+        body {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        .container {
+            background-color: #2d3748;
+        }
+    }
+    ```
+
+    <Warning>
+    Do not remove the placeholder variables: `{{TITULO}}`, `{{HISTORIA}}`, `{{IMAGEN_URL}}`, `{{MENU}}`. The script requires these to generate content.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="What happens if the API fails?">
+    The script includes built-in error handling to ensure the site continues to function.
+
+    **Error Handling Code:**
+    ```python
+    try:
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            data=json.dumps({"model": "stepfun/step-3.5-flash:free", "messages": [{"role": "user", "content": prompt}]})
+        )
+        respuesta_ia = response.json()['choices'][0]['message']['content']
+    except Exception as e:
+        respuesta_ia = "<TITULO>Error</TITULO><HISTORIA>Fallo al conectar con la API.</HISTORIA><IMAGEN>error</IMAGEN>"
+    ```
+
+    **Fallback Behavior:**
+    1. **Title:** Displays "Error"
+    2. **Story:** Shows "Fallo al conectar con la API."
+    3. **Image:** Still generates a random image (using the "error" seed)
+    4. **History:** The entry is still added to `historial.json`
+    5. **Files:** HTML files are still created and committed
+
+    **What This Means:**
+    - Your site will never break completely
+    - The sidebar menu continues to work
+    - Previous stories remain accessible
+    - GitHub Pages continues serving the site
+
+    **When API Fails Might Occur:**
+    - Invalid or expired API key
+    - OpenRouter service outage
+    - Network connectivity issues
+    - Rate limit exceeded
+    - Model temporarily unavailable
+
+    **Recovery:**
+    Once the issue is resolved, the next scheduled run will generate a proper story. The error entry can be:
+    - Left as is (historical record)
+    - Manually deleted from the repository
+    - Overwritten by manually triggering the workflow on the same day
+  </Accordion>
+
+  <Accordion title="Can I generate stories manually?">
+    Yes! You can manually trigger the workflow at any time.
+
+    **Using GitHub Interface:**
+    1. Go to your repository on GitHub
+    2. Click the **Actions** tab
+    3. Select **"Actualizar Historia Diaria"** from the left sidebar
+    4. Click the **"Run workflow"** dropdown button (top right)
+    5. Select the branch (usually `main`)
+    6. Click **"Run workflow"**
+
+    The workflow is configured with `workflow_dispatch`:
+    ```yaml
+    on:
+      schedule:
+        - cron: '0 13 * * *'
+      workflow_dispatch:  # This enables manual triggering
+    ```
+
+    **When to Use Manual Triggers:**
+    - Testing after making configuration changes
+    - Generating multiple stories in one day
+    - Recovering from an API failure
+    - Creating a story outside the normal schedule
+
+    **Behavior on Manual Runs:**
+    - If run on the same day: Updates the existing story for that day
+    - If run on a new day: Creates a new story entry
+    - The logic in `generar_historia.py` handles updates:
+
+    ```python
+    historia_actualizada = False
+    for item in historial[llave_mes]:
+        if item['archivo'] == nombre_archivo_hoy:
+            item['titulo'] = nuevo_titulo  # Updates existing entry
+            historia_actualizada = True
+            break
+
+    if not historia_actualizada:
+        historial[llave_mes].insert(0, {"titulo": nuevo_titulo, "archivo": nombre_archivo_hoy})
+    ```
+
+    <Note>
+    Multiple manual runs on the same day will overwrite the story, not create duplicates.
+    </Note>
+  </Accordion>
+
+  <Accordion title="How do I view the generated stories?">
+    Your stories are automatically published to GitHub Pages.
+
+    **Accessing Your Site:**
+    The URL format is:
+    ```
+    https://[your-username].github.io/[repository-name]/
+    ```
+
+    For example:
+    - Username: `juanperez`
+    - Repository: `historia-diaria`
+    - URL: `https://juanperez.github.io/historia-diaria/`
+
+    **Setting Up GitHub Pages (First Time):**
+    1. Go to repository Settings
+    2. Click **Pages** in the left sidebar
+    3. Under "Source", select **Deploy from a branch**
+    4. Choose branch: `main` or `master`
+    5. Choose folder: `/ (root)`
+    6. Click **Save**
+    7. Wait 2-3 minutes for deployment
+
+    **Viewing Specific Stories:**
+    - **Today's story:** `https://[username].github.io/[repo]/`
+    - **Specific date:** `https://[username].github.io/[repo]/historia-2026-03-05.html`
+
+    **Navigation Features:**
+    - Click the **☰** menu button (top left) to open the sidebar
+    - Sidebar shows all stories organized by month
+    - Click any story title to view it
+    - The menu updates automatically with each new story
+
+    **Files Generated:**
+    - `index.html` - Always shows today's story
+    - `historia-YYYY-MM-DD.html` - Individual dated stories
+    - `historial.json` - Metadata for the sidebar menu
+
+    <Note>
+    GitHub Pages updates within 1-2 minutes after each commit. If you don't see changes immediately, refresh the page or clear your browser cache.
+    </Note>
+  </Accordion>
+
+  <Accordion title="What's the cost of running this?">
+    The cost depends on your choice of AI model and usage.
+
+    **Free Components:**
+    - ✅ **GitHub Actions:** 2,000 minutes/month for free accounts (this uses ~1 minute per run)
+    - ✅ **GitHub Pages:** Free hosting for public repositories
+    - ✅ **Picsum Photos:** Free random images
+    - ✅ **OpenRouter Free Models:** Several models available at no cost
+
+    **GitHub Actions Usage:**
+    ```yaml
+    # Daily schedule = 30 runs/month
+    # ~1 minute per run = 30 minutes/month
+    # Well within the 2,000 minute free tier
+    ```
+
+    **Free AI Models (Current Setup):**
+    ```python
+    "model": "stepfun/step-3.5-flash:free"  # $0.00
+    ```
+
+    Other free options:
+    - `google/gemini-flash-1.5` - Free
+    - `meta-llama/llama-3-8b-instruct:free` - Free
+    - `anthropic/claude-3-haiku:free` - Free (with limits)
+
+    **Paid Model Costs (Optional):**
+    If you choose to use paid models:
+
+    | Model | Cost per Story | Monthly (30 days) |
+    |-------|----------------|-------------------|
+    | GPT-3.5 Turbo | ~$0.002 | ~$0.06 |
+    | GPT-4 Turbo | ~$0.02 | ~$0.60 |
+    | Claude 3.5 Sonnet | ~$0.015 | ~$0.45 |
+    | Gemini Pro | ~$0.001 | ~$0.03 |
+
+    <Note>
+    Actual costs vary based on story length and model pricing updates. Check [OpenRouter pricing](https://openrouter.ai/models) for current rates.
+    </Note>
+
+    **Total Cost:**
+    - **Default setup (free model):** $0.00/month
+    - **With paid model:** $0.03 - $0.60/month
+
+    **Monitoring Usage:**
+    1. Check your OpenRouter dashboard for API usage
+    2. View GitHub Actions usage: Settings → Billing → Plans and usage
+    3. Free tier limits are more than sufficient for daily story generation
+  </Accordion>
+
+  <Accordion title="Can I use a different template?">
+    Yes! You can completely redesign the template or use multiple templates.
+
+    **Current Template System:**
+    ```python
+    # Line 85-86 in generar_historia.py
+    with open('plantilla.html', 'r', encoding='utf-8') as archivo:
+        contenido_html = archivo.read()
+    ```
+
+    **Method 1: Replace the Entire Template**
+    1. Create your new HTML template
+    2. Include the required placeholders:
+       - `{{TITULO}}` - Story title
+       - `{{HISTORIA}}` - Story content
+       - `{{IMAGEN_URL}}` - Image URL
+       - `{{MENU}}` - Sidebar navigation
+    3. Replace `plantilla.html` in your repository
+    4. Commit and push
+
+    **Method 2: Use Multiple Templates**
+    Modify the script to randomly select templates:
+
+    ```python
+    import random
+
+    templates = ['plantilla1.html', 'plantilla2.html', 'plantilla3.html']
+    template_file = random.choice(templates)
+
+    with open(template_file, 'r', encoding='utf-8') as archivo:
+        contenido_html = archivo.read()
+    ```
+
+    **Method 3: Theme-Based Templates**
+    Choose template based on story genre or day of week:
+
+    ```python
+    # Choose by day of week
+    day_of_week = fecha_hoy.weekday()  # 0=Monday, 6=Sunday
+    if day_of_week < 5:
+        template_file = 'plantilla_weekday.html'
+    else:
+        template_file = 'plantilla_weekend.html'
+    ```
+
+    **Minimal Template Example:**
+    ```html
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>{{TITULO}}</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+            img { max-width: 100%; height: auto; }
+        </style>
+    </head>
+    <body>
+        <nav>{{MENU}}</nav>
+        <h1>{{TITULO}}</h1>
+        <img src="{{IMAGEN_URL}}" alt="Story image">
+        <div>{{HISTORIA}}</div>
+    </body>
+    </html>
+    ```
+
+    <Warning>
+    Always test your template locally before committing to ensure all placeholders are correctly positioned.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="How do I backup my stories?">
+    Your stories are already safely stored in Git, but here are additional backup strategies.
+
+    **Built-in Backup: Git History**
+    Every story is automatically committed to your repository:
+    ```yaml
+    - name: 5. Guardar los cambios (Hacer Commit y Push)
+      run: |
+        git add .
+        git commit -m "Actualizar historia e historial"
+        git push
+    ```
+
+    **Benefits:**
+    - Complete version history
+    - Every story is preserved
+    - Can restore any previous version
+    - Distributed backup (on GitHub's servers)
+
+    **Method 1: Clone the Repository**
+    ```bash
+    # Download everything to your computer
+    git clone https://github.com/[username]/[repository-name].git
+
+    # Keep it updated
+    cd [repository-name]
+    git pull
+    ```
+
+    **Method 2: Download as ZIP**
+    1. Go to your repository on GitHub
+    2. Click the green **Code** button
+    3. Select **Download ZIP**
+    4. Extract and store in a safe location
+
+    **Method 3: Automated Backups to Another Service**
+    Add a step to the workflow to push to another Git host:
+
+    ```yaml
+    - name: Backup to GitLab
+      run: |
+        git remote add gitlab https://gitlab.com/[username]/[repo].git
+        git push gitlab main
+    ```
+
+    **Method 4: Export to JSON**
+    Create a script to extract all stories:
+
+    ```python
+    import json
+    from glob import glob
+    from bs4 import BeautifulSoup
+
+    stories = []
+    for file in glob('historia-*.html'):
+        with open(file, 'r', encoding='utf-8') as f:
+            # Parse and extract story data
+            # Add to stories list
+
+    with open('backup.json', 'w', encoding='utf-8') as f:
+        json.dump(stories, f, ensure_ascii=False, indent=2)
+    ```
+
+    **Method 5: GitHub Release Archive**
+    Create periodic releases:
+    1. Go to your repository
+    2. Click **Releases** → **Create a new release**
+    3. Tag version (e.g., `v2026.03` for March 2026)
+    4. GitHub automatically archives the code at that point
+
+    **What to Backup:**
+    - ✅ `historia-*.html` - All story files
+    - ✅ `historial.json` - Navigation metadata
+    - ✅ `index.html` - Latest story
+    - ✅ `plantilla.html` - Template
+    - ✅ `generar_historia.py` - Script
+    - ✅ `.github/workflows/actualizar.yml` - Workflow config
+
+    <Note>
+    With Git, you inherently have a complete backup. Every commit is a snapshot, and GitHub stores everything securely.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Can I change the language?">
+    Yes! You can configure the system to generate stories in any language.
+
+    **Current Configuration (Spanish):**
+    ```python
+    # Line 11-17: Spanish prompt
+    prompt = """
+    Escribe una historia corta de ciencia ficción o fantasía.
+    Debes devolver tu respuesta EXACTAMENTE en este formato:
+    <TITULO>Aquí va el título</TITULO>
+    <HISTORIA>Aquí va la historia en unos dos o tres párrafos.</HISTORIA>
+    <IMAGEN>una_sola_palabra_clave_en_ingles</IMAGEN>
+    """
+
+    # Line 46: Spanish month names
+    meses_español = {"01":"Enero", "02":"Febrero", "03":"Marzo", ...}
+    ```
+
+    **Changing to English:**
+
+    **1. Update the AI Prompt:**
+    ```python
+    prompt = """
+    Write a short science fiction or fantasy story.
+    You must return your response EXACTLY in this format:
+    <TITULO>Title goes here</TITULO>
+    <HISTORIA>Story goes here in two or three paragraphs.</HISTORIA>
+    <IMAGEN>single_keyword_in_english</IMAGEN>
+    """
+    ```
+
+    **2. Update Month Names:**
+    ```python
+    meses_english = {
+        "01": "January", "02": "February", "03": "March",
+        "04": "April", "05": "May", "06": "June",
+        "07": "July", "08": "August", "09": "September",
+        "10": "October", "11": "November", "12": "December"
+    }
+    nombre_mes = meses_english[mes_num]
+    ```
+
+    **3. Update Template:**
+    ```html
+    <!-- Change plantilla.html -->
+    <html lang="en">  <!-- Was: lang="es" -->
+    <title>Daily Automated Story</title>
+    <h2>History</h2>  <!-- Was: "Historial" -->
+    <small>⚡ Page automatically generated.</small>
+    ```
+
+    **Other Languages:**
+
+    **French:**
+    ```python
+    prompt = """
+    Écris une courte histoire de science-fiction ou de fantaisie.
+    Tu dois retourner ta réponse EXACTEMENT dans ce format:
+    <TITULO>Le titre ici</TITULO>
+    <HISTORIA>L'histoire ici en deux ou trois paragraphes.</HISTORIA>
+    <IMAGEN>un_seul_mot_cle_en_anglais</IMAGEN>
+    """
+    ```
+
+    **Portuguese:**
+    ```python
+    prompt = """
+    Escreva uma história curta de ficção científica ou fantasia.
+    Você deve retornar sua resposta EXATAMENTE neste formato:
+    <TITULO>Título aqui</TITULO>
+    <HISTORIA>História aqui em dois ou três parágrafos.</HISTORIA>
+    <IMAGEN>palavra_chave_unica_em_ingles</IMAGEN>
+    """
+    ```
+
+    **Multilingual Stories:**
+    Randomly alternate between languages:
+    ```python
+    import random
+
+    prompts = {
+        'es': "Escribe una historia...",
+        'en': "Write a story...",
+        'fr': "Écris une histoire..."
+    }
+
+    language = random.choice(['es', 'en', 'fr'])
+    prompt = prompts[language]
+    ```
+
+    <Note>
+    Some AI models perform better in English. If you experience quality issues, try a model specifically trained for your target language.
+    </Note>
+  </Accordion>
+</AccordionGroup>
+
+## Technical Questions
+
+<AccordionGroup>
+  <Accordion title="How does the update mechanism work?">
+    The system uses a smart update mechanism to avoid duplicate entries for the same day.
+
+    **File Naming:**
+    ```python
+    # Line 49: Creates filename with date
+    nombre_archivo_hoy = f"historia-{año}-{mes_num}-{dia}.html"
+    # Example: historia-2026-03-05.html
+    ```
+
+    **Update Logic:**
+    ```python
+    # Lines 62-70: Check if story already exists for today
+    historia_actualizada = False
+    for item in historial[llave_mes]:
+        if item['archivo'] == nombre_archivo_hoy:
+            item['titulo'] = nuevo_titulo  # Update existing entry
+            historia_actualizada = True
+            break
+
+    if not historia_actualizada:
+        historial[llave_mes].insert(0, {
+            "titulo": nuevo_titulo,
+            "archivo": nombre_archivo_hoy
+        })
+    ```
+
+    **Behavior:**
+    - **First run of the day:** Creates new entry in `historial.json`
+    - **Subsequent runs same day:** Updates the title in the existing entry
+    - **HTML files:** Always overwritten with the latest content
+    - **Menu order:** New stories appear at the top (`insert(0, ...)`)
+
+    This allows you to:
+    - Run the workflow multiple times per day
+    - Regenerate stories if you're not happy with the first result
+    - Fix issues without creating duplicates
+  </Accordion>
+
+  <Accordion title="Why does the workflow use git diff --quiet?">
+    This prevents empty commits when no changes were made.
+
+    **The Command:**
+    ```bash
+    git diff --quiet && git diff --staged --quiet || git commit -m "Actualizar historia e historial"
+    ```
+
+    **How It Works:**
+    - `git diff --quiet` - Returns 0 if no unstaged changes, 1 if changes exist
+    - `git diff --staged --quiet` - Checks for staged changes
+    - `&&` - "And" operator (continues if previous succeeded)
+    - `||` - "Or" operator (runs if previous failed)
+
+    **Logic:**
+    1. Check if there are no unstaged changes AND no staged changes
+    2. If both are empty (no changes), the condition is true → skip commit
+    3. If there are changes, the condition is false → make commit
+
+    **Why This Matters:**
+    - Prevents cluttering git history with empty commits
+    - Workflow doesn't fail if run multiple times without changes
+    - Useful for testing workflow configuration
+
+    **Alternative (More Explicit):**
+    ```bash
+    if ! git diff --quiet || ! git diff --staged --quiet; then
+      git commit -m "Actualizar historia e historial"
+    fi
+    ```
+  </Accordion>
+
+  <Accordion title="Can I add more metadata to stories?">
+    Yes! You can extend the system to track additional metadata.
+
+    **Current Metadata:**
+    ```json
+    {
+      "Marzo 2026": [
+        {
+          "titulo": "La Última Frontera",
+          "archivo": "historia-2026-03-05.html"
+        }
+      ]
+    }
+    ```
+
+    **Extended Metadata Example:**
+    ```python
+    # After line 70, replace the insert with:
+    historial[llave_mes].insert(0, {
+        "titulo": nuevo_titulo,
+        "archivo": nombre_archivo_hoy,
+        "fecha": fecha_hoy.isoformat(),
+        "modelo": "stepfun/step-3.5-flash:free",
+        "palabras": len(nueva_historia.split()),
+        "genero": "ciencia ficción",  # Could extract from story
+        "calificacion": None  # For future manual rating
+    })
+    ```
+
+    **Extracting Genre from AI:**
+    Update the prompt:
+    ```python
+    prompt = """
+    Escribe una historia corta de ciencia ficción o fantasía.
+    Debes devolver tu respuesta EXACTAMENTE en este formato:
+    <TITULO>Aquí va el título</TITULO>
+    <HISTORIA>Aquí va la historia en unos dos o tres párrafos.</HISTORIA>
+    <IMAGEN>una_sola_palabra_clave_en_ingles</IMAGEN>
+    <GENERO>ciencia_ficcion o fantasia</GENERO>
+    """
+
+    # Extract in the script:
+    genero_match = re.search(r'<GENERO>(.*?)</GENERO>', respuesta_ia, re.DOTALL)
+    genero = genero_match.group(1).strip() if genero_match else "desconocido"
+    ```
+
+    **Using Metadata in Template:**
+    ```python
+    # Add to template variables
+    contenido_html = contenido_html.replace('{{FECHA}}', fecha_hoy.strftime('%d de %B, %Y'))
+    contenido_html = contenido_html.replace('{{GENERO}}', genero)
+    contenido_html = contenido_html.replace('{{PALABRAS}}', str(len(nueva_historia.split())))
+    ```
+
+    **Display in HTML:**
+    ```html
+    <div class="metadata">
+        <span>📅 {{FECHA}}</span>
+        <span>📖 {{GENERO}}</span>
+        <span>📝 {{PALABRAS}} palabras</span>
+    </div>
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Still Have Questions?
+
+If your question isn't answered here:
+
+1. Check the [Troubleshooting](/troubleshooting) page for technical issues
+2. Review the [Core Concepts](/how-it-works) for system architecture
+3. Examine the source code directly - it's only ~100 lines!
+4. Check GitHub Actions logs for specific error messages
+
+<Note>
+The beauty of this project is its simplicity. The entire system is contained in three main files: `generar_historia.py`, `actualizar.yml`, and `plantilla.html`. You can customize any aspect by editing these files!
+</Note>

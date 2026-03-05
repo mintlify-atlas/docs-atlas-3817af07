@@ -1,0 +1,306 @@
+---
+title: 'Script Reference'
+description: 'Complete reference for generar_historia.py - the core story generation script'
+icon: 'code'
+---
+
+## Overview
+
+The `generar_historia.py` script is the heart of Historia Diaria. It connects to the OpenRouter API, generates AI-powered stories, manages the history, and outputs HTML pages using a template system.
+
+<Info>
+The script runs automatically via GitHub Actions every day at midnight UTC.
+</Info>
+
+## Dependencies
+
+The script requires the following Python modules:
+
+```python
+import os
+import requests
+import json
+import re
+from datetime import datetime
+import uuid
+```
+
+<AccordionGroup>
+  <Accordion title="Module Purposes">
+    - `os`: Access environment variables (API key)
+    - `requests`: HTTP client for API calls
+    - `json`: Parse API responses and manage history
+    - `re`: Extract structured data from AI responses
+    - `datetime`: Handle date formatting and file naming
+    - `uuid`: Generate unique image seeds
+  </Accordion>
+</AccordionGroup>
+
+## Environment Variables
+
+The script requires one environment variable:
+
+<ParamField path="OPENROUTER_API_KEY" type="string" required>
+  Your OpenRouter API key for authentication. The script reads it using:
+  
+  ```python
+  api_key = os.environ.get("OPENROUTER_API_KEY")
+  ```
+</ParamField>
+
+<Warning>
+If `OPENROUTER_API_KEY` is not set, the API call will fail and generate an error story.
+</Warning>
+
+## Script Structure
+
+The script executes in 8 sequential steps:
+
+### 1. API Connection (Lines 8-27)
+
+Connects to OpenRouter API and generates a story using the `stepfun/step-3.5-flash:free` model.
+
+```python
+prompt = """
+Escribe una historia corta de ciencia ficción o fantasía.
+Debes devolver tu respuesta EXACTAMENTE en este formato:
+<TITULO>Aquí va el título</TITULO>
+<HISTORIA>Aquí va la historia en unos dos o tres párrafos.</HISTORIA>
+<IMAGEN>una_sola_palabra_clave_en_ingles</IMAGEN>
+"""
+
+try:
+    response = requests.post(
+        url="https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        data=json.dumps({"model": "stepfun/step-3.5-flash:free", "messages": [{"role": "user", "content": prompt}]})
+    )
+    respuesta_ia = response.json()['choices'][0]['message']['content']
+except Exception as e:
+    respuesta_ia = "<TITULO>Error</TITULO><HISTORIA>Fallo al conectar con la API.</HISTORIA><IMAGEN>error</IMAGEN>"
+```
+
+<Card title="API Endpoint" icon="cloud">
+  **URL**: `https://openrouter.ai/api/v1/chat/completions`
+  
+  **Model**: `stepfun/step-3.5-flash:free`
+  
+  **Error Handling**: Catches all exceptions and generates fallback error story
+</Card>
+
+### 2. Data Extraction (Lines 29-34)
+
+Extracts title and story content from the AI response using regex patterns.
+
+```python
+titulo_match = re.search(r'<TITULO>(.*?)</TITULO>', respuesta_ia, re.DOTALL)
+historia_match = re.search(r'<HISTORIA>(.*?)</HISTORIA>', respuesta_ia, re.DOTALL)
+
+nuevo_titulo = titulo_match.group(1).strip() if titulo_match else "Historia sin título"
+nueva_historia = historia_match.group(1).strip() if historia_match else "Error al generar la historia."
+```
+
+<Note>
+The `re.DOTALL` flag allows the patterns to match across multiple lines.
+</Note>
+
+### 3. Image Generation (Lines 36-38)
+
+Generates a unique, reproducible image URL using Picsum with a UUID seed.
+
+```python
+codigo_unico = uuid.uuid4().hex
+url_imagen = f"https://picsum.photos/seed/{codigo_unico}/600/350"
+```
+
+Each run generates a different UUID, ensuring unique images every day while keeping them stable (same seed = same image).
+
+### 4. Date Handling (Lines 40-50)
+
+Formats the current date for file naming and history organization.
+
+```python
+fecha_hoy = datetime.now()
+año = fecha_hoy.strftime("%Y")
+mes_num = fecha_hoy.strftime("%m")
+dia = fecha_hoy.strftime("%d")
+
+meses_español = {"01":"Enero", "02":"Febrero", "03":"Marzo", "04":"Abril", 
+                 "05":"Mayo", "06":"Junio", "07":"Julio", "08":"Agosto", 
+                 "09":"Septiembre", "10":"Octubre", "11":"Noviembre", "12":"Diciembre"}
+nombre_mes = meses_español[mes_num]
+
+nombre_archivo_hoy = f"historia-{año}-{mes_num}-{dia}.html"
+llave_mes = f"{nombre_mes} {año}"
+```
+
+<CardGroup cols={2}>
+  <Card title="File Name Format" icon="file">
+    `historia-YYYY-MM-DD.html`
+    
+    Example: `historia-2026-03-05.html`
+  </Card>
+  <Card title="Month Key Format" icon="calendar">
+    `Nombre_Mes YYYY`
+    
+    Example: `Marzo 2026`
+  </Card>
+</CardGroup>
+
+### 5. History Logic (Lines 52-73)
+
+Manages the `historial.json` file with update-or-insert logic.
+
+```python
+if os.path.exists('historial.json'):
+    with open('historial.json', 'r', encoding='utf-8') as f:
+        historial = json.load(f)
+else:
+    historial = {}
+
+if llave_mes not in historial:
+    historial[llave_mes] = []
+
+historia_actualizada = False
+for item in historial[llave_mes]:
+    if item['archivo'] == nombre_archivo_hoy:
+        item['titulo'] = nuevo_titulo  # Actualiza el título
+        historia_actualizada = True
+        break
+
+if not historia_actualizada:
+    historial[llave_mes].insert(0, {"titulo": nuevo_titulo, "archivo": nombre_archivo_hoy})
+
+with open('historial.json', 'w', encoding='utf-8') as f:
+    json.dump(historial, f, ensure_ascii=False, indent=4)
+```
+
+<Steps>
+  <Step title="Load existing history">
+    Reads `historial.json` if it exists, otherwise creates empty dict
+  </Step>
+  <Step title="Check if month exists">
+    Creates a new month array if the current month isn't in history
+  </Step>
+  <Step title="Update or insert">
+    - If today's file already exists: **updates** the title
+    - If it's a new day: **inserts** at position 0 (most recent first)
+  </Step>
+  <Step title="Save to disk">
+    Writes updated history back to `historial.json` with UTF-8 encoding
+  </Step>
+</Steps>
+
+### 6. Menu Generation (Lines 75-82)
+
+Builds the HTML sidebar menu from the history data.
+
+```python
+menu_html = ""
+for mes, historias in historial.items():
+    menu_html += f'<h3 class="mes-titulo">{mes}</h3>'
+    menu_html += '<ul class="lista-historias">'
+    for item in historias:
+        menu_html += f'<li><a href="{item["archivo"]}">{item["titulo"]}</a></li>'
+    menu_html += '</ul>'
+```
+
+This generates structured HTML with:
+- Month headers using the `.mes-titulo` class
+- Unordered lists with the `.lista-historias` class
+- Links to individual story HTML files
+
+### 7. Template Replacement (Lines 84-91)
+
+Reads `plantilla.html` and replaces all template variables.
+
+```python
+with open('plantilla.html', 'r', encoding='utf-8') as archivo:
+    contenido_html = archivo.read()
+
+contenido_html = contenido_html.replace('{{TITULO}}', nuevo_titulo)
+contenido_html = contenido_html.replace('{{HISTORIA}}', nueva_historia)
+contenido_html = contenido_html.replace('{{IMAGEN_URL}}', url_imagen)
+contenido_html = contenido_html.replace('{{MENU}}', menu_html)
+```
+
+<Tip>
+See [Template Variables](/reference/template-variables) for details on each variable.
+</Tip>
+
+### 8. File Output (Lines 93-98)
+
+Writes the final HTML to two locations.
+
+```python
+with open('index.html', 'w', encoding='utf-8') as archivo:
+    archivo.write(contenido_html)
+
+with open(nombre_archivo_hoy, 'w', encoding='utf-8') as archivo:
+    archivo.write(contenido_html)
+
+print("¡Página y menú generados con éxito!")
+```
+
+<CardGroup cols={2}>
+  <Card title="index.html" icon="house">
+    Always shows the **latest** story (homepage)
+  </Card>
+  <Card title="historia-YYYY-MM-DD.html" icon="clock">
+    **Archived** version with unique filename
+  </Card>
+</CardGroup>
+
+## Error Handling
+
+The script includes minimal but functional error handling:
+
+<Accordion title="API Connection Errors">
+  Any exception during the API call triggers a fallback:
+  
+  ```python
+  except Exception as e:
+      respuesta_ia = "<TITULO>Error</TITULO><HISTORIA>Fallo al conectar con la API.</HISTORIA><IMAGEN>error</IMAGEN>"
+  ```
+  
+  This ensures the workflow never crashes - it simply generates an "Error" story.
+</Accordion>
+
+<Accordion title="Missing Data">
+  If regex extraction fails, the script uses default values:
+  
+  - **Title**: `"Historia sin título"`
+  - **Story**: `"Error al generar la historia."`
+</Accordion>
+
+## Best Practices
+
+<Warning>
+**File Encoding**: All file operations use `encoding='utf-8'` to properly handle Spanish characters (á, é, í, ó, ú, ñ).
+</Warning>
+
+<Tip>
+**Testing Locally**: Run the script manually to test before deployment:
+
+```bash
+export OPENROUTER_API_KEY="your-key-here"
+python generar_historia.py
+```
+</Tip>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Template Variables" icon="brackets-curly" href="/reference/template-variables">
+    All available template placeholders
+  </Card>
+  <Card title="History JSON" icon="database" href="/reference/history-json">
+    Structure of historial.json
+  </Card>
+  <Card title="GitHub Actions Setup" icon="github" href="/configuration/github-actions">
+    Automation workflow configuration
+  </Card>
+  <Card title="OpenRouter Setup" icon="key" href="/configuration/api-setup">
+    API key configuration
+  </Card>
+</CardGroup>

@@ -1,0 +1,454 @@
+---
+title: 'HTML Templates'
+description: 'Understanding the template structure and styling system'
+icon: 'code'
+---
+
+## Overview
+
+The `plantilla.html` file serves as a reusable template that's filled with dynamically generated content. It includes a responsive design, sidebar navigation, and a clean card-based layout.
+
+## Template Structure
+
+The template uses a simple variable substitution system with placeholder tags:
+
+```html plantilla.html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historia Diaria Automatizada</title>
+    <style>
+        /* Embedded CSS styles */
+    </style>
+</head>
+<body>
+    <button id="menu-btn" onclick="toggleMenu()">☰</button>
+    
+    <nav id="sidebar">
+        <button id="close-btn" onclick="toggleMenu()">✖</button>
+        <h2>Historial</h2>
+        {{MENU}}
+    </nav>
+    
+    <div class="container">
+        <h1>{{TITULO}}</h1>
+        <img src="{{IMAGEN_URL}}" alt="Imagen del día" class="imagen-dia">
+        <div class="historia-texto">
+            <p>{{HISTORIA}}</p>
+        </div>
+    </div>
+    
+    <script>
+        function toggleMenu() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('abierto');
+        }
+    </script>
+</body>
+</html>
+```
+
+## Variable Placeholders
+
+The template uses four dynamic placeholders that are replaced by the Python script:
+
+<AccordionGroup>
+  <Accordion title="{{TITULO}}" icon="heading">
+    **Location:** `<h1>{{TITULO}}</h1>`
+    
+    Replaced with the AI-generated story title extracted from the `<TITULO>` tag in the API response.
+    
+    ```python
+    contenido_html = contenido_html.replace('{{TITULO}}', nuevo_titulo)
+    ```
+  </Accordion>
+  
+  <Accordion title="{{HISTORIA}}" icon="book">
+    **Location:** `<p>{{HISTORIA}}</p>`
+    
+    Replaced with the story content extracted from the `<HISTORIA>` tag. Supports multi-paragraph text.
+    
+    ```python
+    contenido_html = contenido_html.replace('{{HISTORIA}}', nueva_historia)
+    ```
+  </Accordion>
+  
+  <Accordion title="{{IMAGEN_URL}}" icon="image">
+    **Location:** `<img src="{{IMAGEN_URL}}" ...>`
+    
+    Replaced with the Picsum Photos URL generated using a random UUID seed.
+    
+    ```python
+    contenido_html = contenido_html.replace('{{IMAGEN_URL}}', url_imagen)
+    ```
+  </Accordion>
+  
+  <Accordion title="{{MENU}}" icon="bars">
+    **Location:** `<nav id="sidebar">{{MENU}}</nav>`
+    
+    Replaced with dynamically generated HTML containing the complete story archive navigation.
+    
+    ```python
+    contenido_html = contenido_html.replace('{{MENU}}', menu_html)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Replacement Process
+
+The Python script performs simple string replacement:
+
+```python generar_historia.py
+# 7. Load template
+with open('plantilla.html', 'r', encoding='utf-8') as archivo:
+    contenido_html = archivo.read()
+
+# Replace all placeholders
+contenido_html = contenido_html.replace('{{TITULO}}', nuevo_titulo)
+contenido_html = contenido_html.replace('{{HISTORIA}}', nueva_historia)
+contenido_html = contenido_html.replace('{{IMAGEN_URL}}', url_imagen)
+contenido_html = contenido_html.replace('{{MENU}}', menu_html)
+
+# 8. Save final files
+with open('index.html', 'w', encoding='utf-8') as archivo:
+    archivo.write(contenido_html)
+
+with open(nombre_archivo_hoy, 'w', encoding='utf-8') as archivo:
+    archivo.write(contenido_html)
+```
+
+<Info>
+This approach is simple and doesn't require a templating engine like Jinja2. It works perfectly for this use case since the placeholders are unique and don't conflict with HTML syntax.
+</Info>
+
+## Styling System
+
+The template includes embedded CSS with a modern, clean design:
+
+### Color Palette
+
+```css plantilla.html
+body {
+    background-color: #f0f2f5;  /* Light gray background */
+}
+
+.container {
+    background-color: #ffffff;  /* White card */
+}
+
+h1 {
+    color: #2d3748;  /* Dark gray headings */
+}
+
+.historia-texto {
+    color: #4a5568;  /* Medium gray text */
+}
+```
+
+### Layout Components
+
+<Tabs>
+  <Tab title="Main Container">
+    ```css plantilla.html
+    .container {
+        background-color: #ffffff;
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        max-width: 600px;
+        width: 100%;
+        text-align: center;
+        margin-top: 40px;
+    }
+    ```
+    
+    Creates a centered card with rounded corners and subtle shadow.
+  </Tab>
+  
+  <Tab title="Story Image">
+    ```css plantilla.html
+    .imagen-dia {
+        max-width: 100%;
+        height: auto;
+        border-radius: 12px;
+        margin-bottom: 30px;
+    }
+    ```
+    
+    Responsive image that scales to container width while maintaining aspect ratio.
+  </Tab>
+  
+  <Tab title="Story Text">
+    ```css plantilla.html
+    .historia-texto {
+        font-size: 1.15rem;
+        line-height: 1.7;
+        color: #4a5568;
+        text-align: left;
+        margin-bottom: 40px;
+    }
+    ```
+    
+    Comfortable reading typography with generous line spacing.
+  </Tab>
+</Tabs>
+
+## Sidebar Menu Generation
+
+The sidebar navigation is dynamically built from `historial.json`:
+
+### Menu Generation Logic
+
+```python generar_historia.py
+# 6. Generate sidebar menu HTML
+menu_html = ""
+for mes, historias in historial.items():
+    menu_html += f'<h3 class="mes-titulo">{mes}</h3>'
+    menu_html += '<ul class="lista-historias">'
+    for item in historias:
+        menu_html += f'<li><a href="{item["archivo"]}">{item["titulo"]}</a></li>'
+    menu_html += '</ul>'
+```
+
+### Generated Menu Example
+
+Based on the actual `historial.json` data:
+
+```html Generated Output
+<h3 class="mes-titulo">Marzo 2026</h3>
+<ul class="lista-historias">
+    <li><a href="historia-2026-03-04.html">El Guardián del Faro de las Sombras</a></li>
+    <li><a href="historia-2026-03-03.html">El Guardián del Laberinto Cuántico</a></li>
+    <li><a href="historia-2026-03-02.html">El Código de las Estrellas</a></li>
+</ul>
+<h3 class="mes-titulo">Febrero 2026</h3>
+<ul class="lista-historias">
+    <li><a href="historia-2026-02-26.html">El Eco de los Días Perdidos</a></li>
+    <li><a href="historia-2026-02-25.html">El Eco del Ayer</a></li>
+</ul>
+```
+
+### Sidebar Styles
+
+```css plantilla.html
+#sidebar {
+    position: fixed;
+    top: 0;
+    left: -300px;  /* Hidden by default */
+    width: 250px;
+    height: 100%;
+    background-color: #ffffff;
+    box-shadow: 2px 0 15px rgba(0,0,0,0.2);
+    transition: left 0.3s ease;  /* Smooth slide animation */
+    padding: 20px;
+    overflow-y: auto;
+    z-index: 1001;
+}
+
+#sidebar.abierto {
+    left: 0;  /* Slides into view */
+}
+```
+
+<Tip>
+The sidebar uses a translate animation instead of display toggling, providing a smooth slide-in effect.
+</Tip>
+
+### Menu Toggle Button
+
+```html plantilla.html
+<button id="menu-btn" onclick="toggleMenu()">☰</button>
+```
+
+```css plantilla.html
+#menu-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    font-size: 24px;
+    background: #ffffff;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+```
+
+## Responsive Design
+
+The template is mobile-friendly:
+
+### Viewport Meta Tag
+
+```html plantilla.html
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+```
+
+Ensures proper scaling on mobile devices.
+
+### Flexible Layout
+
+```css plantilla.html
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 90vh;
+}
+
+.container {
+    max-width: 600px;
+    width: 100%;  /* Scales down on smaller screens */
+}
+
+.imagen-dia {
+    max-width: 100%;  /* Never exceeds container */
+    height: auto;     /* Maintains aspect ratio */
+}
+```
+
+<Check>
+The card layout automatically adapts to screen width, maintaining readability on phones, tablets, and desktops.
+</Check>
+
+## JavaScript Functionality
+
+The template includes minimal JavaScript for sidebar toggling:
+
+```javascript plantilla.html
+function toggleMenu() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('abierto');
+}
+```
+
+### How It Works
+
+1. User clicks the hamburger button (`☰`)
+2. `toggleMenu()` is called
+3. The `abierto` class is toggled on the sidebar
+4. CSS transition animates the sidebar sliding in/out
+5. Close button (`✖`) uses the same function to hide the menu
+
+## Month Grouping Styles
+
+Month headers and story lists have distinct styling:
+
+```css plantilla.html
+.mes-titulo {
+    color: #2d3748;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 5px;
+    margin-top: 20px;
+}
+
+.lista-historias {
+    list-style-type: none;
+    padding: 0;
+}
+
+.lista-historias li {
+    margin-bottom: 10px;
+}
+
+.lista-historias a {
+    text-decoration: none;
+    color: #4a5568;
+    font-size: 0.95rem;
+}
+
+.lista-historias a:hover {
+    color: #3182ce;
+    text-decoration: underline;
+}
+```
+
+This creates clear visual separation between months and provides hover feedback on links.
+
+## Complete Rendering Example
+
+<CodeGroup>
+```html Before (Template)
+<div class="container">
+    <h1>{{TITULO}}</h1>
+    <img src="{{IMAGEN_URL}}" alt="Imagen del día" class="imagen-dia">
+    <div class="historia-texto">
+        <p>{{HISTORIA}}</p>
+    </div>
+</div>
+```
+
+```html After (Rendered)
+<div class="container">
+    <h1>El Guardián del Faro de las Sombras</h1>
+    <img src="https://picsum.photos/seed/a3f5c2d8/600/350" alt="Imagen del día" class="imagen-dia">
+    <div class="historia-texto">
+        <p>En el confín del universo conocido, donde las estrellas se apagaban una tras otra...</p>
+    </div>
+</div>
+```
+</CodeGroup>
+
+## Template Advantages
+
+<CardGroup cols={2}>
+  <Card title="No Build Step" icon="bolt">
+    Pure HTML/CSS/JS means instant page loads without bundlers or frameworks
+  </Card>
+  <Card title="Simple Maintenance" icon="wrench">
+    Easy to update styles or layout without complex tooling
+  </Card>
+  <Card title="GitHub Pages Ready" icon="github">
+    Static files deploy directly without server-side rendering
+  </Card>
+  <Card title="Offline Capable" icon="wifi-slash">
+    All assets embedded means pages work without internet (except images)
+  </Card>
+</CardGroup>
+
+## Customization Guide
+
+### Changing Colors
+
+Edit the color values in the embedded `<style>` block:
+
+```css plantilla.html
+body {
+    background-color: #yourcolor;  /* Change background */
+}
+
+h1 {
+    color: #yourcolor;  /* Change title color */
+}
+```
+
+### Adjusting Layout Width
+
+```css plantilla.html
+.container {
+    max-width: 800px;  /* Wider cards */
+}
+```
+
+### Modifying Image Dimensions
+
+Change the Picsum URL dimensions in the Python script:
+
+```python generar_historia.py
+url_imagen = f"https://picsum.photos/seed/{codigo_unico}/800/450"  # Wider aspect ratio
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="How It Works" icon="gear" href="/how-it-works">
+    Understand the complete system architecture
+  </Card>
+  <Card title="Customization" icon="paintbrush" href="/configuration/customization">
+    Learn how to customize colors, fonts, and layouts
+  </Card>
+</CardGroup>

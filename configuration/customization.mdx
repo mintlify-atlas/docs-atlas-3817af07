@@ -1,0 +1,399 @@
+---
+title: 'Customization'
+description: 'Customize your AI prompts, HTML templates, and story format'
+icon: 'palette'
+---
+
+## Overview
+
+Historia Diaria is highly customizable. You can change the AI prompt, modify the HTML template styling, adjust date formats, and customize image sources.
+
+## Customizing the AI Prompt
+
+### Current Prompt Structure
+
+The AI prompt defines what kind of stories are generated. Here's the current prompt from `generar_historia.py`:
+
+```python generar_historia.py
+prompt = """
+Escribe una historia corta de ciencia ficción o fantasía.
+Debes devolver tu respuesta EXACTAMENTE en este formato:
+<TITULO>Aquí va el título</TITULO>
+<HISTORIA>Aquí va la historia en unos dos o tres párrafos.</HISTORIA>
+<IMAGEN>una_sola_palabra_clave_en_ingles</IMAGEN>
+"""
+```
+
+### Modifying Story Genre and Style
+
+Edit lines 11-17 in `generar_historia.py` to change the story type:
+
+<CodeGroup>
+
+```python Mystery Stories
+prompt = """
+Escribe una historia corta de misterio o suspenso.
+Debes devolver tu respuesta EXACTAMENTE en este formato:
+<TITULO>Aquí va el título</TITULO>
+<HISTORIA>Aquí va la historia en unos dos o tres párrafos.</HISTORIA>
+<IMAGEN>una_sola_palabra_clave_en_ingles</IMAGEN>
+"""
+```
+
+```python Motivational Stories
+prompt = """
+Escribe una historia inspiradora y motivacional.
+Debes devolver tu respuesta EXACTAMENTE en este formato:
+<TITULO>Aquí va el título</TITULO>
+<HISTORIA>Aquí va la historia en unos dos o tres párrafos.</HISTORIA>
+<IMAGEN>una_sola_palabra_clave_en_ingles</IMAGEN>
+"""
+```
+
+```python Historical Fiction
+prompt = """
+Escribe una historia de ficción histórica ambientada en cualquier época.
+Debes devolver tu respuesta EXACTAMENTE en este formato:
+<TITULO>Aquí va el título</TITULO>
+<HISTORIA>Aquí va la historia en unos dos o tres párrafos.</HISTORIA>
+<IMAGEN>una_sola_palabra_clave_en_ingles</IMAGEN>
+"""
+```
+
+</CodeGroup>
+
+<Warning>
+**Important:** Always maintain the exact XML-like format (`<TITULO>`, `<HISTORIA>`, `<IMAGEN>`) in your prompt. The script uses regex to extract these values. If you change the format, you must also update the extraction logic.
+</Warning>
+
+### Changing Story Length
+
+Modify the prompt to request longer or shorter stories:
+
+```python generar_historia.py
+# For longer stories:
+<HISTORIA>Aquí va la historia en cinco o seis párrafos detallados.</HISTORIA>
+
+# For shorter stories:
+<HISTORIA>Aquí va la historia en un solo párrafo.</HISTORIA>
+
+# For specific word count:
+<HISTORIA>Aquí va la historia en exactamente 200 palabras.</HISTORIA>
+```
+
+### Advanced Prompt Customization
+
+Add more specific instructions to the prompt:
+
+```python Custom Prompt Example
+prompt = """
+Escribe una historia corta de ciencia ficción o fantasía.
+
+Requisitos:
+- Incluye un protagonista con un dilema moral
+- Usa un tono poético y descriptivo
+- Ambientación: futuro lejano o mundo mágico
+- Longitud: 2-3 párrafos
+
+Debes devolver tu respuesta EXACTAMENTE en este formato:
+<TITULO>Aquí va el título</TITULO>
+<HISTORIA>Aquí va la historia en unos dos o tres párrafos.</HISTORIA>
+<IMAGEN>una_sola_palabra_clave_en_ingles</IMAGEN>
+"""
+```
+
+## Modifying HTML Templates
+
+### Template Structure
+
+The `plantilla.html` file defines the visual appearance of your daily stories. It uses placeholder variables that are replaced by the Python script:
+
+```html plantilla.html
+<div class="container">
+    <h1>{{TITULO}}</h1>
+    <img src="{{IMAGEN_URL}}" alt="Imagen del día" class="imagen-dia">
+    <div class="historia-texto">
+        <p>{{HISTORIA}}</p>
+    </div>
+</div>
+```
+
+### Available Placeholders
+
+| Placeholder | Description | Set in |
+|-------------|-------------|--------|
+| `{{TITULO}}` | Story title | AI generation |
+| `{{HISTORIA}}` | Story text | AI generation |
+| `{{IMAGEN_URL}}` | Image source URL | Python script |
+| `{{MENU}}` | Sidebar navigation menu | Python script |
+
+### Customizing CSS Styling
+
+The template includes extensive CSS. Here are key sections you can customize:
+
+<AccordionGroup>
+  <Accordion title="Color Scheme">
+    Edit the color variables in the `<style>` section (lines 8-104):
+    
+    ```css plantilla.html
+    body {
+        background-color: #f0f2f5;  /* Page background */
+    }
+    
+    .container {
+        background-color: #ffffff;  /* Card background */
+    }
+    
+    h1 {
+        color: #2d3748;  /* Title color */
+    }
+    
+    .historia-texto {
+        color: #4a5568;  /* Story text color */
+    }
+    ```
+    
+    **Dark Mode Example:**
+    ```css
+    body {
+        background-color: #1a202c;
+    }
+    
+    .container {
+        background-color: #2d3748;
+    }
+    
+    h1 {
+        color: #f7fafc;
+    }
+    
+    .historia-texto {
+        color: #e2e8f0;
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Typography">
+    Modify font settings (line 9):
+    
+    ```css Current
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    ```
+    
+    ```css Custom Fonts
+    body {
+        font-family: 'Georgia', serif;  /* Classic look */
+    }
+    
+    /* Or use Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap');
+    body {
+        font-family: 'Merriweather', serif;
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Card Layout">
+    Adjust the main card dimensions (lines 90-99):
+    
+    ```css plantilla.html
+    .container {
+        padding: 40px;           /* Inner spacing */
+        border-radius: 16px;     /* Corner roundness */
+        max-width: 600px;        /* Maximum width */
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);  /* Shadow effect */
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Sidebar Menu Styling">
+    Customize the history sidebar (lines 34-87):
+    
+    ```css plantilla.html
+    #sidebar {
+        width: 250px;                    /* Sidebar width */
+        background-color: #ffffff;       /* Background color */
+        box-shadow: 2px 0 15px rgba(0,0,0,0.2);  /* Shadow */
+    }
+    
+    .mes-titulo {
+        color: #2d3748;                  /* Month title color */
+        border-bottom: 2px solid #e2e8f0;  /* Underline */
+    }
+    
+    .lista-historias a {
+        color: #4a5568;                  /* Link color */
+    }
+    
+    .lista-historias a:hover {
+        color: #3182ce;                  /* Hover color */
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Adding Custom Elements
+
+You can add new HTML elements to the template:
+
+```html Add a Footer
+<div class="footer" style="text-align: center; margin-top: 20px; color: #a0aec0;">
+    <small>⚡ Generado automáticamente por IA</small>
+    <br>
+    <small>© 2026 Mi Proyecto Historia Diaria</small>
+</div>
+```
+
+## Adjusting Date and Locale Settings
+
+### Spanish Month Names
+
+The script includes month names in Spanish (lines 46-47):
+
+```python generar_historia.py
+meses_español = {
+    "01":"Enero", "02":"Febrero", "03":"Marzo", 
+    "04":"Abril", "05":"Mayo", "06":"Junio", 
+    "07":"Julio", "08":"Agosto", "09":"Septiembre", 
+    "10":"Octubre", "11":"Noviembre", "12":"Diciembre"
+}
+nombre_mes = meses_español[mes_num]
+```
+
+### Changing to English
+
+```python English Month Names
+meses_ingles = {
+    "01":"January", "02":"February", "03":"March",
+    "04":"April", "05":"May", "06":"June",
+    "07":"July", "08":"August", "09":"September",
+    "10":"October", "11":"November", "12":"December"
+}
+nombre_mes = meses_ingles[mes_num]
+```
+
+### Custom Date Format
+
+The filename format is set on line 49:
+
+```python generar_historia.py
+# Current format: historia-2026-03-05.html
+nombre_archivo_hoy = f"historia-{año}-{mes_num}-{dia}.html"
+
+# Alternative formats:
+nombre_archivo_hoy = f"story_{año}_{mes_num}_{dia}.html"  # story_2026_03_05.html
+nombre_archivo_hoy = f"{dia}-{mes_num}-{año}.html"        # 05-03-2026.html
+nombre_archivo_hoy = f"{nombre_mes}_{dia}_{año}.html"     # Marzo_05_2026.html
+```
+
+## Customizing Image Sources
+
+### Current Implementation
+
+By default, Historia Diaria uses Lorem Picsum for random placeholder images:
+
+```python generar_historia.py
+import uuid
+
+# Generate unique seed for consistent daily image
+codigo_unico = uuid.uuid4().hex
+url_imagen = f"https://picsum.photos/seed/{codigo_unico}/600/350"
+```
+
+### Alternative Image Sources
+
+<CodeGroup>
+
+```python Unsplash Random
+# Random nature photos from Unsplash
+url_imagen = "https://source.unsplash.com/600x350/?nature,landscape"
+
+# Or based on story keyword (requires AI IMAGEN tag parsing):
+imagen_keyword = imagen_match.group(1).strip() if imagen_match else "abstract"
+url_imagen = f"https://source.unsplash.com/600x350/?{imagen_keyword}"
+```
+
+```python Static Image
+# Use the same image every day
+url_imagen = "https://your-domain.com/static/default-image.jpg"
+
+# Or a local image in your repository
+url_imagen = "images/banner.jpg"
+```
+
+```python Date-based Picsum
+# Use the date as seed for consistency
+fecha_seed = f"{año}{mes_num}{dia}"
+url_imagen = f"https://picsum.photos/seed/{fecha_seed}/600/350"
+```
+
+```python No Image
+# Remove the image entirely by commenting out in the template
+# In plantilla.html, comment out line 118:
+<!-- <img src="{{IMAGEN_URL}}" alt="Imagen del día" class="imagen-dia"> -->
+
+# Or set an empty string
+url_imagen = ""
+```
+
+</CodeGroup>
+
+### Changing Image Dimensions
+
+Modify the size in line 38 of `generar_historia.py`:
+
+```python generar_historia.py
+# Current: 600x350 pixels
+url_imagen = f"https://picsum.photos/seed/{codigo_unico}/600/350"
+
+# Wider image:
+url_imagen = f"https://picsum.photos/seed/{codigo_unico}/800/400"
+
+# Square image:
+url_imagen = f"https://picsum.photos/seed/{codigo_unico}/600/600"
+
+# Portrait orientation:
+url_imagen = f"https://picsum.photos/seed/{codigo_unico}/400/600"
+```
+
+## Testing Your Customizations
+
+<Steps>
+  <Step title="Make Your Changes">
+    Edit `generar_historia.py` or `plantilla.html` with your customizations
+  </Step>
+  
+  <Step title="Commit and Push">
+    ```bash
+    git add .
+    git commit -m "Customize story generation"
+    git push
+    ```
+  </Step>
+  
+  <Step title="Trigger Manual Run">
+    Go to **Actions** → **Actualizar Historia Diaria** → **Run workflow**
+  </Step>
+  
+  <Step title="Check Results">
+    View your generated story at `https://your-username.github.io/your-repo/`
+  </Step>
+</Steps>
+
+<Tip>
+Test your changes locally first by running `python generar_historia.py` (make sure you have set the `OPENROUTER_API_KEY` environment variable).
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="GitHub Actions" icon="robot" href="/configuration/github-actions">
+    Learn how to configure and troubleshoot the automation workflow
+  </Card>
+  
+  <Card title="API Setup" icon="key" href="/configuration/api-setup">
+    Review API configuration and model selection
+  </Card>
+</CardGroup>

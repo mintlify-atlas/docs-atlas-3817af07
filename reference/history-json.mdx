@@ -1,0 +1,434 @@
+---
+title: 'History JSON Structure'
+description: 'Data schema and management logic for historial.json'
+icon: 'database'
+---
+
+## Overview
+
+The `historial.json` file stores metadata about all generated stories organized by month. The script uses this file to build the sidebar navigation menu and track which stories have been generated.
+
+<Info>
+The file uses UTF-8 encoding to properly handle Spanish characters and special symbols.
+</Info>
+
+## Data Schema
+
+The JSON structure is a two-level hierarchy:
+
+```json
+{
+  "Month_Name YYYY": [
+    {
+      "titulo": "Story Title",
+      "archivo": "historia-YYYY-MM-DD.html"
+    }
+  ]
+}
+```
+
+<ParamField path="Root Object" type="object">
+  Top-level object with month keys (e.g., `"Marzo 2026"`)
+</ParamField>
+
+<ParamField path="Month Key" type="string" format="Nombre_Mes YYYY">
+  Spanish month name followed by 4-digit year. Examples:
+  - `"Enero 2026"`
+  - `"Febrero 2026"`
+  - `"Marzo 2026"`
+</ParamField>
+
+<ParamField path="Month Value" type="array">
+  Array of story objects, ordered chronologically (newest first)
+</ParamField>
+
+<ParamField path="Story Object" type="object">
+  Individual story metadata:
+  
+  <Expandable title="Properties">
+    - `titulo` (string): The story title
+    - `archivo` (string): HTML filename in format `historia-YYYY-MM-DD.html`
+  </Expandable>
+</ParamField>
+
+## Example Data
+
+Here's actual data from the Historia Diaria project:
+
+```json
+{
+    "Febrero 2026": [
+        {
+            "titulo": "Error",
+            "archivo": "historia-2026-02-28.html"
+        },
+        {
+            "titulo": "Error",
+            "archivo": "historia-2026-02-27.html"
+        },
+        {
+            "titulo": "El Eco de los Días Perdidos",
+            "archivo": "historia-2026-02-26.html"
+        },
+        {
+            "titulo": "El Eco del Ayer",
+            "archivo": "historia-2026-02-25.html"
+        },
+        {
+            "titulo": "El Último Encantamiento Cuántico",
+            "archivo": "historia-2026-02-24.html"
+        },
+        {
+            "titulo": "El Reloj de los Suspiros",
+            "archivo": "historia-2026-02-23.html"
+        },
+        {
+            "titulo": "El Eco de los Espejos",
+            "archivo": "historia-2026-02-22.html"
+        },
+        {
+            "titulo": "El Último Tejido",
+            "archivo": "historia-2026-02-21.html"
+        },
+        {
+            "titulo": "El Último Eco de la Fuente",
+            "archivo": "historia-2026-02-20.html"
+        }
+    ],
+    "Marzo 2026": [
+        {
+            "titulo": "El Guardián del Faro de las Sombras",
+            "archivo": "historia-2026-03-04.html"
+        },
+        {
+            "titulo": "El Guardián del Laberinto Cuántico",
+            "archivo": "historia-2026-03-03.html"
+        },
+        {
+            "titulo": "El Código de las Estrellas",
+            "archivo": "historia-2026-03-02.html"
+        },
+        {
+            "titulo": "El Coleccionista de Suspiros",
+            "archivo": "historia-2026-03-01.html"
+        }
+    ]
+}
+```
+
+<Note>
+Notice the "Error" entries on Feb 27-28 - these indicate failed API calls where the fallback error story was generated.
+</Note>
+
+## Month Grouping
+
+The script generates month keys using Spanish month names:
+
+```python
+meses_español = {
+    "01": "Enero",
+    "02": "Febrero",
+    "03": "Marzo",
+    "04": "Abril",
+    "05": "Mayo",
+    "06": "Junio",
+    "07": "Julio",
+    "08": "Agosto",
+    "09": "Septiembre",
+    "10": "Octubre",
+    "11": "Noviembre",
+    "12": "Diciembre"
+}
+
+fecha_hoy = datetime.now()
+año = fecha_hoy.strftime("%Y")
+mes_num = fecha_hoy.strftime("%m")
+nombre_mes = meses_español[mes_num]
+
+llave_mes = f"{nombre_mes} {año}"
+```
+
+<CardGroup cols={2}>
+  <Card title="Key Format" icon="key">
+    `{Spanish_Month_Name} {YYYY}`
+    
+    Example: `Marzo 2026`
+  </Card>
+  <Card title="Auto-Creation" icon="plus">
+    New month keys are created automatically when needed
+  </Card>
+</CardGroup>
+
+## Update vs Insert Logic
+
+The script implements smart logic to handle re-runs on the same day:
+
+<Steps>
+  <Step title="Load existing history">
+    ```python
+    if os.path.exists('historial.json'):
+        with open('historial.json', 'r', encoding='utf-8') as f:
+            historial = json.load(f)
+    else:
+        historial = {}
+    ```
+  </Step>
+  
+  <Step title="Ensure month exists">
+    ```python
+    if llave_mes not in historial:
+        historial[llave_mes] = []
+    ```
+  </Step>
+  
+  <Step title="Check if today's entry exists">
+    ```python
+    historia_actualizada = False
+    for item in historial[llave_mes]:
+        if item['archivo'] == nombre_archivo_hoy:
+            item['titulo'] = nuevo_titulo  # UPDATE existing entry
+            historia_actualizada = True
+            break
+    ```
+    
+    If a story with today's filename is found, **update** its title instead of creating a duplicate.
+  </Step>
+  
+  <Step title="Insert new entry if needed">
+    ```python
+    if not historia_actualizada:
+        historial[llave_mes].insert(0, {
+            "titulo": nuevo_titulo,
+            "archivo": nombre_archivo_hoy
+        })
+    ```
+    
+    New stories are **inserted at position 0** to keep the most recent first.
+  </Step>
+  
+  <Step title="Save back to file">
+    ```python
+    with open('historial.json', 'w', encoding='utf-8') as f:
+        json.dump(historial, f, ensure_ascii=False, indent=4)
+    ```
+    
+    Note the `ensure_ascii=False` parameter to preserve Spanish characters.
+  </Step>
+</Steps>
+
+<Accordion title="Why Update Instead of Duplicate?">
+  If the GitHub Action runs multiple times in one day (due to manual triggers or workflow re-runs), this logic prevents duplicate entries in the sidebar menu.
+  
+  **Without this logic**:
+  ```json
+  "Marzo 2026": [
+      {"titulo": "Story v3", "archivo": "historia-2026-03-05.html"},
+      {"titulo": "Story v2", "archivo": "historia-2026-03-05.html"},
+      {"titulo": "Story v1", "archivo": "historia-2026-03-05.html"}
+  ]
+  ```
+  
+  **With update logic**:
+  ```json
+  "Marzo 2026": [
+      {"titulo": "Story v3", "archivo": "historia-2026-03-05.html"}
+  ]
+  ```
+</Accordion>
+
+## File Format Details
+
+<ParamField path="Encoding" type="string" default="utf-8">
+  All read/write operations use UTF-8 encoding:
+  
+  ```python
+  with open('historial.json', 'r', encoding='utf-8') as f:
+      historial = json.load(f)
+  ```
+</ParamField>
+
+<ParamField path="Indentation" type="number" default="4">
+  The file is saved with 4-space indentation for readability:
+  
+  ```python
+  json.dump(historial, f, ensure_ascii=False, indent=4)
+  ```
+</ParamField>
+
+<ParamField path="ASCII Escaping" type="boolean" default="false">
+  `ensure_ascii=False` preserves Spanish characters instead of escaping them:
+  
+  ```python
+  # With ensure_ascii=False:
+  "titulo": "El Guardián del Faro"
+  
+  # With ensure_ascii=True:
+  "titulo": "El Guardi\u00e1n del Faro"
+  ```
+</ParamField>
+
+## Menu Generation
+
+The history data is transformed into HTML for the sidebar menu:
+
+```python
+menu_html = ""
+for mes, historias in historial.items():
+    menu_html += f'<h3 class="mes-titulo">{mes}</h3>'
+    menu_html += '<ul class="lista-historias">'
+    for item in historias:
+        menu_html += f'<li><a href="{item["archivo"]}">{item["titulo"]}</a></li>'
+    menu_html += '</ul>'
+```
+
+<Card title="Output Format" icon="code">
+  ```html
+  <h3 class="mes-titulo">Marzo 2026</h3>
+  <ul class="lista-historias">
+      <li><a href="historia-2026-03-04.html">El Guardián del Faro de las Sombras</a></li>
+      <li><a href="historia-2026-03-03.html">El Guardián del Laberinto Cuántico</a></li>
+  </ul>
+  ```
+</Card>
+
+<Note>
+The iteration order of months depends on Python's dict ordering (insertion order in Python 3.7+). Older months appear first.
+</Note>
+
+## Common Operations
+
+### Adding a Story Manually
+
+To manually add a story to the history:
+
+```json
+{
+    "Marzo 2026": [
+        {
+            "titulo": "Your New Story Title",
+            "archivo": "historia-2026-03-XX.html"
+        },
+        // ... existing stories
+    ]
+}
+```
+
+<Warning>
+Make sure to:
+1. Use the correct month key format (`Nombre_Mes YYYY`)
+2. Follow the filename pattern (`historia-YYYY-MM-DD.html`)
+3. Insert at position 0 if you want it to appear first
+4. Save with UTF-8 encoding
+</Warning>
+
+### Deleting Old Stories
+
+To remove stories from the menu (without deleting HTML files):
+
+```json
+{
+    "Enero 2026": [
+        // Remove entries here
+    ],
+    "Febrero 2026": [
+        // Keep these
+    ]
+}
+```
+
+You can delete entire month keys or individual story objects.
+
+### Reordering Stories
+
+Change the array order to modify menu order (top = first in array):
+
+```json
+{
+    "Marzo 2026": [
+        {"titulo": "Most recent", "archivo": "historia-2026-03-04.html"},
+        {"titulo": "Second", "archivo": "historia-2026-03-03.html"},
+        {"titulo": "Oldest", "archivo": "historia-2026-03-01.html"}
+    ]
+}
+```
+
+## Error Handling
+
+<AccordionGroup>
+  <Accordion title="Missing File">
+    If `historial.json` doesn't exist, the script creates a new empty dict:
+    
+    ```python
+    if os.path.exists('historial.json'):
+        with open('historial.json', 'r', encoding='utf-8') as f:
+            historial = json.load(f)
+    else:
+        historial = {}
+    ```
+  </Accordion>
+  
+  <Accordion title="Corrupted JSON">
+    If the JSON is malformed, the script will crash. Consider adding try-except:
+    
+    ```python
+    try:
+        with open('historial.json', 'r', encoding='utf-8') as f:
+            historial = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        historial = {}
+    ```
+  </Accordion>
+  
+  <Accordion title="Missing Month Key">
+    The script safely creates missing month keys:
+    
+    ```python
+    if llave_mes not in historial:
+        historial[llave_mes] = []
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Backup" icon="floppy-disk">
+    Keep backups before manual edits:
+    
+    ```bash
+    cp historial.json historial.json.backup
+    ```
+  </Card>
+  
+  <Card title="Validation" icon="check">
+    Validate JSON syntax before committing:
+    
+    ```bash
+    python -m json.tool historial.json
+    ```
+  </Card>
+  
+  <Card title="Encoding" icon="file-code">
+    Always use UTF-8 when editing manually (not ASCII or Latin-1)
+  </Card>
+  
+  <Card title="Consistency" icon="list-check">
+    Keep filename patterns consistent:
+    
+    `historia-YYYY-MM-DD.html`
+  </Card>
+</CardGroup>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Script Reference" icon="code" href="/reference/script-reference">
+    How the script manages history
+  </Card>
+  <Card title="Template Variables" icon="brackets-curly" href="/reference/template-variables">
+    How {{MENU}} is generated from history
+  </Card>
+  <Card title="File Structure" icon="folder" href="/how-it-works">
+    Where historial.json fits in the project
+  </Card>
+</CardGroup>

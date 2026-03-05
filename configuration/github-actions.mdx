@@ -1,0 +1,497 @@
+---
+title: 'GitHub Actions'
+description: 'Configure and troubleshoot the automated workflow'
+icon: 'robot'
+---
+
+## Overview
+
+GitHub Actions automates your daily story generation. The workflow runs on a schedule, generates a new story using AI, and commits the results back to your repository.
+
+## Workflow File Breakdown
+
+The complete workflow is defined in `.github/workflows/actualizar.yml`:
+
+```yaml .github/workflows/actualizar.yml
+name: Actualizar Historia Diaria
+
+on:
+  schedule:
+    # Los servidores usan la hora universal (UTC).
+    # Las 13:00 UTC equivalen exactamente a las 8:00 AM en Lima.
+    - cron: '0 13 * * *'
+  workflow_dispatch: # Este comando nos permite ejecutarlo manualmente con un botón para probar
+
+jobs:
+  generar-pagina:
+    runs-on: ubuntu-latest # Encendemos una máquina virtual con Linux
+    permissions:
+      contents: write # Le damos permiso a la máquina para modificar tu repositorio
+
+    steps:
+      - name: 1. Descargar tu código a la máquina virtual
+        uses: actions/checkout@v4
+
+      - name: 2. Preparar e instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 3. Instalar dependencias (NUEVO PASO)
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: 4. Ejecutar tu script
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python generar_historia.py
+
+      - name: 5. Guardar los cambios (Hacer Commit y Push)
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git diff --quiet && git diff --staged --quiet || git commit -m "Actualizar historia e historial"
+          git push
+```
+
+### Workflow Components
+
+<AccordionGroup>
+  <Accordion title="Workflow Name" icon="tag">
+    ```yaml
+    name: Actualizar Historia Diaria
+    ```
+    
+    The name appears in the GitHub Actions tab. You can change this to any descriptive name:
+    
+    ```yaml
+    name: Daily Story Generator
+    name: Auto Historia Bot
+    ```
+  </Accordion>
+  
+  <Accordion title="Triggers" icon="calendar">
+    ```yaml
+    on:
+      schedule:
+        - cron: '0 13 * * *'
+      workflow_dispatch:
+    ```
+    
+    **Two trigger types:**
+    
+    1. **Schedule (cron)**: Runs automatically at specified time
+    2. **workflow_dispatch**: Allows manual triggering via GitHub UI button
+  </Accordion>
+  
+  <Accordion title="Job Configuration" icon="server">
+    ```yaml
+    jobs:
+      generar-pagina:
+        runs-on: ubuntu-latest
+        permissions:
+          contents: write
+    ```
+    
+    - **runs-on**: Specifies Ubuntu Linux virtual machine
+    - **permissions**: Grants write access to commit files back to repository
+  </Accordion>
+  
+  <Accordion title="Steps" icon="list">
+    The workflow executes 5 sequential steps:
+    
+    1. **Checkout code**: Downloads repository to VM
+    2. **Setup Python**: Installs Python 3.10
+    3. **Install dependencies**: Installs `requests` library
+    4. **Run script**: Executes `generar_historia.py` with API key
+    5. **Commit & push**: Saves generated files back to repository
+  </Accordion>
+</AccordionGroup>
+
+## Schedule Configuration (Cron Syntax)
+
+### Understanding Cron
+
+The cron expression defines when the workflow runs:
+
+```yaml
+cron: '0 13 * * *'
+```
+
+**Format:** `minute hour day month weekday`
+
+| Position | Current Value | Meaning |
+|----------|---------------|----------|
+| Minute | `0` | At minute 0 |
+| Hour | `13` | At 1:00 PM (UTC) |
+| Day | `*` | Every day |
+| Month | `*` | Every month |
+| Weekday | `*` | Every day of week |
+
+<Warning>
+**Important:** GitHub Actions uses UTC timezone. Convert your local time to UTC.
+
+Example: 8:00 AM Lima (UTC-5) = 13:00 UTC
+</Warning>
+
+### Common Schedule Examples
+
+<CodeGroup>
+
+```yaml Every Day at 9 AM UTC
+schedule:
+  - cron: '0 9 * * *'  # 9:00 AM UTC daily
+```
+
+```yaml Twice Daily
+schedule:
+  - cron: '0 8 * * *'   # 8:00 AM UTC
+  - cron: '0 20 * * *'  # 8:00 PM UTC
+```
+
+```yaml Weekdays Only
+schedule:
+  - cron: '0 13 * * 1-5'  # 1:00 PM UTC, Monday-Friday
+```
+
+```yaml Every 6 Hours
+schedule:
+  - cron: '0 */6 * * *'  # Every 6 hours
+```
+
+```yaml Specific Days
+schedule:
+  - cron: '0 12 * * 0,3,5'  # Noon UTC on Sunday, Wednesday, Friday
+```
+
+</CodeGroup>
+
+### Timezone Conversion Table
+
+| Your Local Time | Timezone | UTC Equivalent | Cron Expression |
+|-----------------|----------|----------------|------------------|
+| 8:00 AM | EST (UTC-5) | 13:00 | `0 13 * * *` |
+| 9:00 AM | PST (UTC-8) | 17:00 | `0 17 * * *` |
+| 12:00 PM | GMT (UTC+0) | 12:00 | `0 12 * * *` |
+| 3:00 PM | CET (UTC+1) | 14:00 | `0 14 * * *` |
+| 10:00 AM | IST (UTC+5:30) | 04:30 | `30 4 * * *` |
+
+<Tip>
+Use [crontab.guru](https://crontab.guru) to validate and understand cron expressions.
+</Tip>
+
+## Manual Triggers
+
+The `workflow_dispatch` trigger enables manual workflow execution:
+
+```yaml .github/workflows/actualizar.yml
+on:
+  workflow_dispatch:  # Enables manual trigger button
+```
+
+### How to Manually Run
+
+<Steps>
+  <Step title="Navigate to Actions Tab">
+    Go to your GitHub repository → **Actions** tab
+  </Step>
+  
+  <Step title="Select Workflow">
+    Click on **Actualizar Historia Diaria** in the left sidebar
+  </Step>
+  
+  <Step title="Run Workflow">
+    Click **Run workflow** dropdown → Select branch (usually `main`) → Click **Run workflow**
+  </Step>
+  
+  <Step title="Monitor Progress">
+    The workflow will appear in the runs list. Click it to see live logs.
+  </Step>
+</Steps>
+
+<Note>
+Manual triggers are perfect for testing changes without waiting for the scheduled time.
+</Note>
+
+## Permissions Setup
+
+The workflow requires write permissions to commit generated files:
+
+```yaml .github/workflows/actualizar.yml
+permissions:
+  contents: write  # Allows the workflow to push commits
+```
+
+### Verifying Permissions
+
+<Steps>
+  <Step title="Check Repository Settings">
+    Go to **Settings** → **Actions** → **General**
+  </Step>
+  
+  <Step title="Workflow Permissions">
+    Scroll to **Workflow permissions** section
+  </Step>
+  
+  <Step title="Enable Write Access">
+    Select **Read and write permissions** and save
+  </Step>
+</Steps>
+
+<Warning>
+If permissions are set to "Read repository contents only", the workflow will fail at the push step with a 403 error.
+</Warning>
+
+## Viewing Workflow Logs
+
+Logs help you understand what happened during each run.
+
+### Accessing Logs
+
+<Steps>
+  <Step title="Open Actions Tab">
+    Navigate to **Actions** in your repository
+  </Step>
+  
+  <Step title="Select a Run">
+    Click on any workflow run to see its details
+  </Step>
+  
+  <Step title="View Step Logs">
+    Click on **generar-pagina** job, then click any step to expand its logs
+  </Step>
+</Steps>
+
+### Understanding Log Output
+
+Each step shows its output:
+
+```log Example Success Log
+✓ 1. Descargar tu código a la máquina virtual
+✓ 2. Preparar e instalar Python
+✓ 3. Instalar dependencias
+✓ 4. Ejecutar tu script
+  Output: ¡Página y menú generados con éxito!
+✓ 5. Guardar los cambios
+  [main abc1234] Actualizar historia e historial
+   3 files changed, 45 insertions(+)
+```
+
+## Troubleshooting Failed Runs
+
+### Common Errors
+
+<AccordionGroup>
+  <Accordion title="Error: API Key Not Found" icon="key">
+    **Symptom:**
+    ```log
+    Fallo al conectar con la API.
+    ```
+    
+    **Cause:** Missing or incorrect `OPENROUTER_API_KEY` secret
+    
+    **Solution:**
+    1. Go to **Settings** → **Secrets and variables** → **Actions**
+    2. Verify `OPENROUTER_API_KEY` exists
+    3. If missing, add it with your OpenRouter API key
+    4. Re-run the workflow
+  </Accordion>
+  
+  <Accordion title="Error: Permission Denied (403)" icon="lock">
+    **Symptom:**
+    ```log
+    remote: Permission to user/repo.git denied
+    fatal: unable to access 'https://github.com/user/repo/': The requested URL returned error: 403
+    ```
+    
+    **Cause:** Workflow lacks write permissions
+    
+    **Solution:**
+    1. Go to **Settings** → **Actions** → **General**
+    2. Under **Workflow permissions**, select **Read and write permissions**
+    3. Save and re-run the workflow
+  </Accordion>
+  
+  <Accordion title="Error: Module Not Found" icon="puzzle-piece">
+    **Symptom:**
+    ```log
+    ModuleNotFoundError: No module named 'requests'
+    ```
+    
+    **Cause:** Dependencies not installed properly
+    
+    **Solution:**
+    Ensure step 3 in your workflow includes:
+    ```yaml
+    - name: 3. Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
+    ```
+  </Accordion>
+  
+  <Accordion title="Error: Nothing to Commit" icon="file">
+    **Symptom:**
+    ```log
+    nothing to commit, working tree clean
+    ```
+    
+    **Cause:** Script didn't generate or modify any files
+    
+    **Solution:**
+    This can be normal if the script had an error. Check step 4 logs:
+    ```log
+    - name: 4. Ejecutar tu script
+    ```
+    Look for Python errors or API failures.
+  </Accordion>
+  
+  <Accordion title="Error: Rate Limit Exceeded" icon="clock">
+    **Symptom:**
+    ```log
+    HTTP 429: Too Many Requests
+    ```
+    
+    **Cause:** OpenRouter rate limit reached (common with free models)
+    
+    **Solution:**
+    - Wait 1-2 hours and try again
+    - Switch to a paid model
+    - Reduce workflow frequency
+  </Accordion>
+  
+  <Accordion title="Error: Workflow Didn't Run" icon="calendar-xmark">
+    **Symptom:** Scheduled workflow didn't execute at expected time
+    
+    **Cause:** GitHub Actions can be delayed by up to 15 minutes during high load
+    
+    **Solution:**
+    - Wait 15-30 minutes past scheduled time
+    - Check **Actions** tab for any queued runs
+    - Manually trigger to test if workflow works
+  </Accordion>
+</AccordionGroup>
+
+### Debugging Steps
+
+<Steps>
+  <Step title="Check Workflow Status">
+    Go to **Actions** and look for failed runs (red X icon)
+  </Step>
+  
+  <Step title="Read Error Logs">
+    Click the failed run → Click the failed step → Read error message
+  </Step>
+  
+  <Step title="Verify Secrets">
+    Ensure `OPENROUTER_API_KEY` is properly set in repository secrets
+  </Step>
+  
+  <Step title="Test Locally">
+    Run `python generar_historia.py` on your local machine with the API key set as an environment variable:
+    ```bash
+    export OPENROUTER_API_KEY="your-key-here"
+    python generar_historia.py
+    ```
+  </Step>
+  
+  <Step title="Manual Trigger">
+    Use **Run workflow** button to test without waiting for schedule
+  </Step>
+</Steps>
+
+## Advanced Workflow Customization
+
+### Adding Notifications
+
+Send yourself an email when workflow fails:
+
+```yaml Add Email Notification
+- name: Notify on Failure
+  if: failure()
+  uses: dawidd6/action-send-mail@v3
+  with:
+    server_address: smtp.gmail.com
+    server_port: 465
+    username: ${{ secrets.EMAIL_USERNAME }}
+    password: ${{ secrets.EMAIL_PASSWORD }}
+    subject: Historia Diaria Workflow Failed
+    body: Check the logs at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    to: your-email@example.com
+    from: GitHub Actions
+```
+
+### Run Only on Specific Branches
+
+```yaml Branch-Specific Trigger
+on:
+  schedule:
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main  # Only run on main branch
+```
+
+### Add Timeout Protection
+
+```yaml Prevent Long Runs
+jobs:
+  generar-pagina:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # Cancel if runs longer than 10 minutes
+    permissions:
+      contents: write
+```
+
+### Multiple Python Dependencies
+
+If you add more Python libraries:
+
+```yaml requirements.txt Approach
+- name: 3. Instalar dependencias
+  run: |
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+```
+
+Create `requirements.txt` in your repository:
+```txt requirements.txt
+requests==2.31.0
+Pillow==10.0.0
+beautifulsoup4==4.12.0
+```
+
+## Workflow Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Test First" icon="vial">
+    Always use manual triggers to test changes before relying on scheduled runs
+  </Card>
+  
+  <Card title="Monitor Costs" icon="dollar-sign">
+    Check OpenRouter usage regularly if using paid models
+  </Card>
+  
+  <Card title="Keep Secrets Safe" icon="shield">
+    Never commit API keys directly in code. Always use GitHub Secrets
+  </Card>
+  
+  <Card title="Review Logs" icon="file-lines">
+    Check workflow logs weekly to catch any silent failures
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Setup" icon="key" href="/configuration/api-setup">
+    Configure OpenRouter API and select models
+  </Card>
+  
+  <Card title="Customization" icon="palette" href="/configuration/customization">
+    Customize prompts, templates, and styling
+  </Card>
+</CardGroup>
