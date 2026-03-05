@@ -1,0 +1,65 @@
+{
+  "projectType": "general",
+  "projectName": "Historia Diaria",
+  "projectDescription": "An automated daily story generator that creates AI-powered sci-fi and fantasy stories using GitHub Actions",
+  "theme": "palm",
+  "primaryColor": "#8B5CF6",
+  "lightColor": "#A78BFA",
+  "darkColor": "#6D28D9",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Core Concepts",
+        "pages": [
+          "how-it-works",
+          "story-generation",
+          "html-templates"
+        ]
+      },
+      {
+        "group": "Configuration",
+        "pages": [
+          "configuration/api-setup",
+          "configuration/customization",
+          "configuration/github-actions"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/script-reference",
+          "reference/template-variables",
+          "reference/history-json"
+        ]
+      },
+      {
+        "group": "Help",
+        "pages": [
+          "troubleshooting",
+          "faq"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Automated daily story generation using AI",
+    "GitHub Actions workflow for scheduled execution",
+    "HTML template system with dynamic content",
+    "Historical story archive with sidebar navigation",
+    "OpenRouter API integration for story generation",
+    "Responsive web design with modern styling"
+  ],
+  "publicApiSurface": [
+    "generar_historia.py - Main story generation script",
+    "plantilla.html - HTML template with variable placeholders",
+    "historial.json - Story archive data structure",
+    ".github/workflows/actualizar.yml - GitHub Actions workflow"
+  ]
+}
